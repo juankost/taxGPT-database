@@ -8,6 +8,6 @@ This repository handles the processing and serving of the law database for the t
 ```
 docker build -t gcr.io/taxgpt-413814/taxgpt-database:tag .
 gcloud auth configure-docker
-docker push gcr.io/your-project-id/your-app-name:tag
+docker push gcr.io/taxgpt-413814/taxgpt-database:tag
 ```
 2. 
