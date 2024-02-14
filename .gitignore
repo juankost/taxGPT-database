@@ -3,3 +3,5 @@
 /.vscode
 */.vscode
 .DS_Store
+/chromedriver
+/chrome

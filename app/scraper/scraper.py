@@ -8,7 +8,11 @@ import pandas as pd
 import sys
 import wget
 
-sys.path.append("/Users/juankostelec/Google_drive/Projects/tax_backend/src")
+# from unstructured import partition_html
+from langchain_community.document_transformers import Html2TextTransformer
+from langchain_community.document_loaders import AsyncHtmlLoader
+
+sys.path.append("/Users/juankostelec/Google_drive/Projects/taxGPT-database/app")
 from utils import get_website_html, is_url_to_file, make_title_safe  # noqa: E402
 
 FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
@@ -127,16 +131,18 @@ class Scraper:
         download_url_link = None
         saved_path = None
         if "eur-lex.europa.eu" in url_link:
-            # TODO: Implemen scraper for EUR-Lex
+            download_url_link, saved_path = ScrapeEURLex.download_custom_website(url_link, title, driver=self.driver)
             print("Need to download from eur-lex.europa.eu")
         elif ".uradni-list.si" in url_link:
-            # TODO Implement scraper for uradni-list.si
+            download_url_link, saved_path = ScrapeUradniList.download_custom_website(
+                url_link, title, driver=self.driver
+            )
             print("Need to download from uradni-list.si")
         elif ".pisrs.si" in url_link:
             download_url_link, saved_path = ScrapePISRS.download_custom_website(url_link, title, driver=self.driver)
         elif "fu.gov.si" in url_link:
             print("Need to download from fu.gov.si")
-            # TODO Implement scraper for fu.gov.si
+            download_url_link, saved_path = ScrapeGOVsi.download_custom_website(url_link, title, driver=self.driver)
         else:
             print("Need to download from other website: ", url_link)
 
@@ -231,19 +237,107 @@ class ScrapePISRS(Scraper):
             return None
 
 
+# TODO: Implement scraper for EUR-Lex
+# How exactly should it parse the website?
+# Split the text by article, (also introduction, annex ...)
+# Tables should be converted to JSON format
 class ScrapeEURLex(Scraper):
+    @staticmethod
+    def download_custom_website(url_link, title, output_dir, driver=None):
+        """
+        EURLUX already provides the law nicely formatted in HTML. We just need to donwload the correct HTML element
+
+        """
+        soup = get_website_html(url_link, driver=driver, close_driver=False)
+        print(soup)
+        # I want to print all the different class types (i.e. all the values of the class attribute)
+        print("Obtained soup")
+        div_classes = set()
+        p_classes = set()
+
+        for div in soup.find_all("div"):
+            if div.get("class"):
+                div_classes.add(div.get("class")[0])
+        for div in soup.find_all("p"):
+            if div.get("class"):
+                p_classes.add(div.get("class")[0])
+        for table in soup.find_all("table"):
+            print(table)
+
+        print("DIV class types: ", list(set(div_classes)))
+        print("P class types: ", list(set(p_classes)))
+
+        loader = AsyncHtmlLoader([url_link])
+        docs = loader.load()
+        html2text = Html2TextTransformer()
+        docs_transformed = html2text.transform_documents(docs)
+        print(docs_transformed[0])
+
+        # The following HTML elements will decide the structure:
+        # <p class= ti-art, sti-art, ti-tbl, normal, note,
+        # <p class="title-article-norm"  --> Article number
+        # <p class="title-division-1" --> Title of section
+        # <p class="title-division-2" --> Subtitle of section
+        # <p class="title-division-1" --> Title of section
+        # <p class="norm"  --> The actual text of the law
+        # <div class="norm"  --> The actual text of the law
+        # < p class="title-annex-1" --> Title of annex / tile of section
+        # <div class="grid-container grid-list" --> Lists within a law article
+        return None, None
+
+
+# TODO Implement scraper for uradni-list.si
+class ScrapeUradniList(Scraper):
     @staticmethod
     def download_custom_website(url_link, title, driver=None):
         # soup = get_website_html(url_link, driver=driver, close_driver=False)
         # print(soup)
-        return
+        return None, None
 
 
-# TODO: Handle too long filename error
+# TODO Implement scraper for fu.gov.si
+class ScrapeGOVsi(Scraper):
+    @staticmethod
+    def download_custom_website(url_link, title, driver=None):
+        soup = get_website_html(url_link, driver=driver, close_driver=False)
+        # I want to print all the different class types (i.e. all the values of the class attribute)
+        print("Obtained soup")
+        for div in soup.find_all("div"):
+            print(div.get("class"))
+        for div in soup.find_all("p"):
+            print(div.get("class"))
+
+        # The following HTML elements will decide the structure:
+        # <p class="title-article-norm"  --> Article number
+        # <p class="title-division-1" --> Title of section
+        # <p class="title-division-2" --> Subtitle of section
+        # <p class="title-division-1" --> Title of section
+        # <p class="norm"  --> The actual text of the law
+        # <div class="norm"  --> The actual text of the law
+        # < p class="title-annex-1" --> Title of annex / tile of section
+        # <div class="grid-container grid-list" --> Lists within a law article
+        return None, None
+
+
 if __name__ == "__main__":
     # Download all the data
-    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/tax_backend/data"
-    RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/tax_backend/data/raw_files"
+    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data"
+    RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/raw_files"
 
-    scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR)
-    scraper.download_all_references()
+    # scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR)
+    # scraper.download_all_references()
+
+    sys.path.append(
+        "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chromedriver/mac_arm-121.0.6167.85/chromedriver-mac-arm64/chromedriver"
+    )
+    chromedriver_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chromedriver/mac_arm-121.0.6167.85/chromedriver-mac-arm64/chromedriver"
+    browser_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chrome/mac_arm-121.0.6167.85/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+    option = webdriver.ChromeOptions()
+    option.binary_location = browser_path
+    browser = webdriver.Chrome(options=option)
+
+    # Let's test the new Scraper over the EURLUX website
+    print("Testing")
+    url = "https://eur-lex.europa.eu/legal-content/SL/TXT/HTML/?uri=CELEX:32012R0815&qid=1628753057527&from=EN"
+    output_dir = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_eurlux_data.txt"
+    ScrapeEURLex.download_custom_website(url, None, output_dir, driver=browser)
