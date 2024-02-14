@@ -24,27 +24,14 @@ gcloud compute instances create INSTANCE_NAME --project=PROJECT_ID --zone=ZONE -
 
 
 
-
-
-
-
-# TODO:
-1. Have the database deployed
-- deploy the database VM
-    - Created VM [DONE]
-    - Create the docker image  [DONE]
-    - Test the docker image
-    - Set up VM to use Container optimized OS
-    - Set up Google cloud to deploy the new docker image whenever we commit changes to the repo
-    - Set up the access to the google cloud storage
-    - Deploy
-- Test run the data pipeline to download the databse and create it
-
-2. Have the API deployed and connected to the database
-- Have the API interact with the google cloud database
-- Deploy the API to the Google cloud run
-
-3. Have the Website deployed and connected to the API and database
+# TODO
+1. Test the Google VM, if the code runs there (Selenium data scraping)
+    - Deploy the docker image on the VM
+    - Run the data_pipeline.py script there
+    - Set access to the google cloud storage
+    - Add the backup functions to the data pipeline to save the data to the google cloud storage
+    - Write startup script for the Google VM: Install the Docker image, pull the latest data from the google storage, 
+    initialize the vector database, run the fast.api server
 
 
 # UCPA Assistance:

@@ -1,17 +1,13 @@
 from app.scraper.references_list import FURSReferencesList
 from app.scraper.scraper import Scraper
 import os
-from dontenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 # Load the env variables
 load_dotenv(find_dotenv())
 ROOT_URL = os.getenv("ROOT_URL")
 METADATA_DIR = os.getenv("METADATA_DIR")
 RAW_DATA_DIR = os.getenv("RAW_DATA_DIR")
-
-ROOT_URL = "https://www.fu.gov.si"
-METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-backend/data"
-RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-backend/data/raw_files"
 
 
 def main():
