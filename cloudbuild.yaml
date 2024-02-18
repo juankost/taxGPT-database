@@ -12,10 +12,10 @@ steps:
   args:
   - '-c'
   - |
-    export HOME=/workspace
-    mkdir -p $HOME/.ssh
-    echo "$$SSH_PRIVATE_KEY" > $HOME/.ssh/id_rsa
-    chmod 600 $HOME/.ssh/id_rsa
+    export HOME=/workspace && \\
+    mkdir -p $HOME/.ssh && \\
+    gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > $HOME/.ssh/id_rsa && \\
+    chmod 600 $HOME/.ssh/id_rsa && \\
     gcloud compute ssh taxgpt-database --zone us-central1-f --command "bash -s" -- < ./deploy.sh
   secretEnv: ['SSH_PRIVATE_KEY']
   id: Deploy to VM
@@ -23,8 +23,8 @@ steps:
 images:
 - 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA'
 
-availableSecrets:
-  secretManager:
-  - versionName: rojects/$PROJECT_ID/secrets/cloud-build-taxgpt-database-key/versions/latest
-    env: 'SSH_PRIVATE_KEY'
+# availableSecrets:
+#   secretManager:
+#   - versionName: rojects/$PROJECT_ID/secrets/cloud-build-taxgpt-database-key/versions/latest
+#     env: 'SSH_PRIVATE_KEY'
     
