@@ -25,6 +25,5 @@ images:
 
 
 secrets:
-- kmsKeyName: ''  # Not using Cloud KMS, so this is left empty.
-  secretEnv:
+- secretEnv:
     SSH_PRIVATE_KEY: projects/$PROJECT_ID/secrets/cloud-build-taxgpt-database-key/versions/latest
