@@ -17,7 +17,7 @@ steps:
     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > $home/.ssh/id_rsa && \\
     chmod 600 $home/.ssh/id_rsa && \\
     gcloud compute ssh taxgpt-database --zone us-central1-f --command "bash -s" -- < ./deploy.sh
-  secretEnv: ['SSH_PRIVATE_KEY']
+  # secretEnv: ['SSH_PRIVATE_KEY']
   id: Deploy to VM
 
 images:
