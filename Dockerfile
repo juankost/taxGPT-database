@@ -1,22 +1,30 @@
 # Alternative for the docker image: 
 # https://github.com/joyzoursky/docker-python-chromedriver/blob/master/py-debian/3.9-selenium/Dockerfile
-
 FROM selenium/standalone-chrome
 
+# Run commands as root
 USER root
-RUN wget https://bootstrap.pypa.io/get-pip.py
-RUN python3 get-pip.py
-RUN python3 -m pip install selenium
 
-# INSTALL DEPENDENCIES
+# Install Python pip
+RUN wget https://bootstrap.pypa.io/get-pip.py && \
+    python3 get-pip.py && \
+    python3 -m pip install --no-cache-dir --upgrade pip selenium
+
+# Copy the requirements file and install Python dependencies
 COPY ./requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
-# RUN APP
+# Copy the application code to the container
 COPY ./app /app
 
-# LOAD, UPDATE and BACKUP DATABASE
-CMD ["python3", "/app/pipeline/data_pipeline.py"]
+# Expose port 8080
+EXPOSE 8080
 
-# RUN APP
+# Copy the startup script to the container
+COPY ./startup.sh /app/startup.sh
 
+# Make sure the startup script is executable
+RUN chmod +x /app/startup.sh
+
+# Define the command to run the application
+CMD ["/bin/bash", "/app/startup.sh"]
