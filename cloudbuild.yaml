@@ -12,10 +12,10 @@ steps:
   args:
   - '-c'
   - |
-    export HOME=/workspace && \\
-    mkdir -p $HOME/.ssh && \\
-    gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > $HOME/.ssh/id_rsa && \\
-    chmod 600 $HOME/.ssh/id_rsa && \\
+    export home=/workspace && \\
+    mkdir -p $home/.ssh && \\
+    gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > $home/.ssh/id_rsa && \\
+    chmod 600 $home/.ssh/id_rsa && \\
     gcloud compute ssh taxgpt-database --zone us-central1-f --command "bash -s" -- < ./deploy.sh
   secretEnv: ['SSH_PRIVATE_KEY']
   id: Deploy to VM
