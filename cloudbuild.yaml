@@ -23,7 +23,8 @@ steps:
 images:
 - 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA'
 
-
-secrets:
-- secretEnv:
-    SSH_PRIVATE_KEY: projects/$PROJECT_ID/secrets/cloud-build-taxgpt-database-key/versions/latest
+availableSecrets:
+  secretManager:
+  - versionName: rojects/$PROJECT_ID/secrets/cloud-build-taxgpt-database-key/versions/latest
+    env: 'SSH_PRIVATE_KEY'
+    
