@@ -14,4 +14,9 @@ RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
 # RUN APP
 COPY ./app /app
-# CMD 
+
+# LOAD, UPDATE and BACKUP DATABASE
+CMD ["python3", "/app/pipeline/data_pipeline.py"]
+
+# RUN APP
+

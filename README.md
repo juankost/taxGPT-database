@@ -21,6 +21,12 @@ IMAGE_PROJECT=
 gcloud compute instances create INSTANCE_NAME --project=PROJECT_ID --zone=ZONE --machine-type=MACHINE_TYPE --image=IMAGE --image-project=IMAGE_PROJECT
 ```
 3. Load the Docker image on the VM
+```
+docker-credential-gcr configure-docker
+docker pull gcr.io/taxgpt-413814/taxgpt-database:tag
+
+```
+
 
 
 
@@ -32,6 +38,19 @@ gcloud compute instances create INSTANCE_NAME --project=PROJECT_ID --zone=ZONE -
     - Add the backup functions to the data pipeline to save the data to the google cloud storage
     - Write startup script for the Google VM: Install the Docker image, pull the latest data from the google storage, 
     initialize the vector database, run the fast.api server
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # UCPA Assistance:
@@ -50,7 +69,7 @@ Insurance:
 - ski rescue  (DONE)
 
 TODO: 
-- french insurance confirm that they cover the taxi to Geneva (WAITING CALLBACK)
+- french insurance confirm that they cover the taxi to Geneva (DONE)
 - declare accident to swiss Insurance (WAITING FIRST FOR FRENCH INSURANCE)
 - return ski pass (NO NEED NOW)
 - send all documents (IN PROGRESS)
