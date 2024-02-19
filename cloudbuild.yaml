@@ -27,8 +27,8 @@ steps:
     chmod 600 /workspace/.ssh/id_rsa 
     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key-pub > /workspace/.ssh/id_rsa.pub 
     chmod 600 /workspace/.ssh/id_rsa.pub 
-    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f --command "cat > /tmp/deploy.sh" -- < ./deploy.sh
-    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f --command "bash /tmp/deploy.sh"
+    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f --troubleshoot --command "cat > /tmp/deploy.sh" -- < ./deploy.sh
+    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f --troubleshoot --command "bash /tmp/deploy.sh"
   id: Deploy to VM
 
 images:
