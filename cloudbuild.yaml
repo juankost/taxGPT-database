@@ -17,7 +17,7 @@ steps:
   - add-metadata
   - taxgpt-database  # Replace with your VM's name
   - --zone=us-central1-f  # Replace with your VM's zone
-  - --metadata-from-file google-container-manifest=./manifest.yaml
+  - --metadata-from-file=google-container-manifest=./manifest.yaml
   id: Update container manifest 
 - name: 'gcr.io/cloud-builders/gcloud'
   args:
