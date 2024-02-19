@@ -12,3 +12,4 @@ docker rm vector-database-service || true
 docker run --name vector-database-service -d \
     -p 8080:8080 \
     gcr.io/taxgpt-413814/taxgpt-database-image:latest
+
