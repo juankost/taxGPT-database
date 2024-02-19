@@ -1,0 +1,15 @@
+version: v1
+spec:
+  containers:
+    - name: vector-database-service
+      image: 'gcr.io/taxgpt-413814/taxgpt-database-image:latest'
+      ports:
+        - name: http
+          hostPort: 8080
+          containerPort: 8080
+          protocol: TCP
+      securityContext:
+        privileged: false
+      stdin: false
+      tty: false
+  restartPolicy: Always

@@ -10,7 +10,15 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/$PROJECT_ID/taxgpt-database-image:latest']
   id: Pushing updated image to latest tag
-
+- name: 'gcr.io/cloud-builders/gcloud'
+  args:
+  - compute
+  - instances
+  - add-metadata
+  - taxgpt-database  # Replace with your VM's name
+  - --zone=us-central1-f  # Replace with your VM's zone
+  - --metadata-from-file google-container-manifest=./manifest.yaml
+  id: Update container manifest 
 - name: 'gcr.io/cloud-builders/gcloud'
   args:
   - compute
