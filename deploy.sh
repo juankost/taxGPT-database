@@ -1,4 +1,6 @@
 #!/bin/bash
+set -x
+
 echo "Starting deployment process..."
 
 # Pull the latest Docker image
