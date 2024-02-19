@@ -10,9 +10,16 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/$PROJECT_ID/taxgpt-database-image:latest']
   id: Pushing updated image to latest tag
-- name: 'gcr.io/cloud-builders/gcloud'
-  args: ['bash', '-c', 'chmod +x ./deploy.sh']
+- name: 'gcr.io/cloud-builders/git'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    chmod +x ./deploy.sh
   id: Make deploy.sh executable
+
+
+
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
   args:
