@@ -1,9 +1,13 @@
 #!/bin/bash
 set -x
+whoami
+gcloud auth list
+docker info
 
 echo "Starting deployment process..."
 
 # Pull the latest Docker image
+gcloud auth configure-docker -q
 docker pull gcr.io/taxgpt-413814/taxgpt-database-image:latest
 
 echo "Pulled the latest Docker image..."
@@ -19,8 +23,6 @@ docker rm vector-database-service || true
 echo "Removed the old container..."
 
 # Run the new container
-docker run --name vector-database-service -d \
-    -p 8080:8080 \
-    gcr.io/taxgpt-413814/taxgpt-database-image:latest
+docker run --name vector-database-service -d -p 8080:8080 gcr.io/taxgpt-413814/taxgpt-database-image:latest
 
 echo "Started the new container..."
