@@ -67,7 +67,7 @@ steps:
     chmod 600 /workspace/.ssh/id_rsa 
     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key-pub > /workspace/.ssh/id_rsa.pub 
     chmod 600 /workspace/.ssh/id_rsa.pub 
-    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f  --command "docker pull gcr.io/taxgpt-413814/taxgpt-database-image:latest"
+    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --troubleshoot --strict-host-key-checking=no --zone us-central1-f  --command "docker pull gcr.io/taxgpt-413814/taxgpt-database-image:latest"
   id: Trying to pull latest docker image on VM 
 
 images:
