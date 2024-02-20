@@ -8,22 +8,21 @@
 
 # # Pull the latest Docker image
 # gcloud auth configure-docker -q
-# docker pull gcr.io/taxgpt-413814/taxgpt-database-image:latest
+docker pull gcr.io/taxgpt-413814/taxgpt-database-image:latest
 
-# echo "Pulled the latest Docker image..."
+echo "Pulled the latest Docker image..."
 
-# # Stop the current container
-# docker stop vector-database-service || true
+# Stop the current container
+docker stop vector-database-service || true
 
-# echo "Stopped the current container..."
+echo "Stopped the current container..."
 
-# # Remove the old container
-# docker rm vector-database-service || true
+# Remove the old container
+docker rm vector-database-service || true
 
-# echo "Removed the old container..."
+echo "Removed the old container..."
 
-# # Run the new container
-# docker run --name vector-database-service -d -p 8080:8080 gcr.io/taxgpt-413814/taxgpt-database-image:latest
+# Run the new container
+docker run --name vector-database-service -d -p 8080:8080 gcr.io/taxgpt-413814/taxgpt-database-image:latest
 
-touch /home/deployed.txt
 echo "Started the new container..."
