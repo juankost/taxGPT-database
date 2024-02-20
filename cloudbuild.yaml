@@ -42,6 +42,7 @@ steps:
       --command "sudo google_metadata_script_runner startup" \
       --project $PROJECT_ID
   id: Trigger startup script
+  
 # - name: 'gcr.io/cloud-builders/git'
 #   entrypoint: 'bash'
 #   args:

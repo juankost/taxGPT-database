@@ -25,4 +25,5 @@
 # # Run the new container
 # docker run --name vector-database-service -d -p 8080:8080 gcr.io/taxgpt-413814/taxgpt-database-image:latest
 
+touch /tmp/deployed.txt
 echo "Started the new container..."
