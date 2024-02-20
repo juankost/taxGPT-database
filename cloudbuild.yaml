@@ -10,13 +10,9 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/$PROJECT_ID/taxgpt-database-image:latest']
   id: Pushing updated image to latest tag
-
-# Print the digest of teh updated docker image
 - name: 'gcr.io/cloud-builders/docker'
   args: ['inspect', 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA', '--format={{.RepoDigests}}']
   id: Print the digest of the updated docker image
-
-
 - name: 'gcr.io/cloud-builders/gcloud'
   args:
   - compute
