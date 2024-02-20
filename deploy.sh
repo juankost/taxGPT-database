@@ -4,7 +4,7 @@
 # gcloud auth list
 # docker info
 
-# echo "Starting deployment process..."
+echo "Starting deployment process..."
 
 # # Pull the latest Docker image
 # gcloud auth configure-docker -q
