@@ -17,39 +17,38 @@ steps:
   - add-metadata
   - taxgpt-database  
   - --zone=us-central1-f 
-  - --metadata-from-file=google-container-manifest=./manifest.yaml,startup-script=./deploy.sh
+  - --metadata-from-file=google-container-manifest=./manifest.yaml,startup-script=./deploy.sh,gce-container-declaration=./manifest.yaml
   id: Update container manifest and startup script
-
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
   args:
   - '-c'
   - |
-    gcloud compute instances update-container taxgpt-database --container-image gcr.io/taxgpt-413814/taxgpt-database-image:latest
+    gcloud compute instances update-container taxgpt-database --zone=us-central1-f --container-image gcr.io/taxgpt-413814/taxgpt-database-image:latest
   id: Update the container image on the VM
 
-- name: 'gcr.io/cloud-builders/gcloud'
-  entrypoint: 'bash'
-  args:
-  - '-c'
-  - |
-    mkdir -p /builder/home/.ssh/ 
-    touch /builder/home/.ssh/google_compute_known_hosts 
-    chmod g+w /builder/home/.ssh/google_compute_known_hosts 
-    gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > /builder/home/.ssh/cloud_key 
-    gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key-pub > /builder/home/.ssh/cloud_key.pub 
-    chmod 600 /builder/home/.ssh/cloud_key 
-    chmod 600 /builder/home/.ssh/cloud_key.pub 
-  id: Prepare the SSH keys for the service account
-- name: 'gcr.io/cloud-builders/gcloud'
-  entrypoint: 'bash'
-  args:
-  - '-c'
-  - |
-    gcloud compute ssh taxgpt-database --ssh-key-file=/builder/home/.ssh/cloud_key --zone us-central1-f  \
-      --command "sudo google_metadata_script_runner startup" \
-      --project $PROJECT_ID
-  id: Trigger startup script
+# - name: 'gcr.io/cloud-builders/gcloud'
+#   entrypoint: 'bash'
+#   args:
+#   - '-c'
+#   - |
+#     mkdir -p /builder/home/.ssh/ 
+#     touch /builder/home/.ssh/google_compute_known_hosts 
+#     chmod g+w /builder/home/.ssh/google_compute_known_hosts 
+#     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > /builder/home/.ssh/cloud_key 
+#     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key-pub > /builder/home/.ssh/cloud_key.pub 
+#     chmod 600 /builder/home/.ssh/cloud_key 
+#     chmod 600 /builder/home/.ssh/cloud_key.pub 
+#   id: Prepare the SSH keys for the service account
+# - name: 'gcr.io/cloud-builders/gcloud'
+#   entrypoint: 'bash'
+#   args:
+#   - '-c'
+#   - |
+#     gcloud compute ssh taxgpt-database --ssh-key-file=/builder/home/.ssh/cloud_key --zone us-central1-f  \
+#       --command "sudo google_metadata_script_runner startup" \
+#       --project $PROJECT_ID
+#   id: Trigger startup script
 
 
 

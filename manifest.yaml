@@ -8,8 +8,8 @@ spec:
           hostPort: 8080
           containerPort: 8080
           protocol: TCP
-      securityContext:
-        privileged: false
-      stdin: false
-      tty: false
+      # securityContext:
+      #   privileged: false
+      # stdin: false
+      # tty: false
   restartPolicy: Always
