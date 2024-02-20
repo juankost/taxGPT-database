@@ -17,7 +17,7 @@ steps:
   - add-metadata
   - taxgpt-database  
   - --zone=us-central1-f 
-  - --metadata-from-file=google-container-manifest=./manifest.yaml,startup-script=./deploy.sh,gce-container-declaration=./manifest.yaml
+  - --metadata-from-file=gce-container-declaration=./container.yaml  # google-container-manifest=./manifest.yaml,startup-script=./deploy.sh,
   id: Update container manifest and startup script
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
@@ -26,6 +26,9 @@ steps:
   - |
     gcloud compute instances update-container taxgpt-database --zone=us-central1-f --container-image gcr.io/taxgpt-413814/taxgpt-database-image:latest
   id: Update the container image on the VM
+images:
+- 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA'    
+
 
 # - name: 'gcr.io/cloud-builders/gcloud'
 #   entrypoint: 'bash'
@@ -49,13 +52,6 @@ steps:
 #       --command "sudo google_metadata_script_runner startup" \
 #       --project $PROJECT_ID
 #   id: Trigger startup script
-
-
-
-
-
-
-
 # - name: 'gcr.io/cloud-builders/git'
 #   entrypoint: 'bash'
 #   args:
@@ -63,7 +59,6 @@ steps:
 #   - |
 #     chmod +x ./deploy.sh
 #   id: Make deploy.sh executable
-
 # - name: 'gcr.io/cloud-builders/gcloud'
 #   entrypoint: 'bash'
 #   args:
@@ -90,8 +85,6 @@ steps:
 #     gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --troubleshoot --strict-host-key-checking=no --zone us-central1-f  --command "docker pull gcr.io/taxgpt-413814/taxgpt-database-image:latest"
 #   id: Trying to pull latest docker image on VM 
 
-images:
-- 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA'    
 
 # gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f --command "bash -s" -- < ./deploy.sh
 
