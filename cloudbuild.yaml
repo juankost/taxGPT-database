@@ -17,7 +17,7 @@ steps:
   - add-metadata
   - taxgpt-database  
   - --zone=us-central1-f 
-  - --metadata-from-file=gce-container-declaration=./container.yaml  # google-container-manifest=./manifest.yaml,startup-script=./deploy.sh,
+  - --metadata-from-file=gce-container-declaration=./container.yaml
   id: Update container manifest and startup script
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
@@ -27,65 +27,4 @@ steps:
     gcloud compute instances update-container taxgpt-database --zone=us-central1-f --container-image gcr.io/taxgpt-413814/taxgpt-database-image:latest
   id: Update the container image on the VM
 images:
-- 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA'    
-
-
-# - name: 'gcr.io/cloud-builders/gcloud'
-#   entrypoint: 'bash'
-#   args:
-#   - '-c'
-#   - |
-#     mkdir -p /builder/home/.ssh/ 
-#     touch /builder/home/.ssh/google_compute_known_hosts 
-#     chmod g+w /builder/home/.ssh/google_compute_known_hosts 
-#     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > /builder/home/.ssh/cloud_key 
-#     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key-pub > /builder/home/.ssh/cloud_key.pub 
-#     chmod 600 /builder/home/.ssh/cloud_key 
-#     chmod 600 /builder/home/.ssh/cloud_key.pub 
-#   id: Prepare the SSH keys for the service account
-# - name: 'gcr.io/cloud-builders/gcloud'
-#   entrypoint: 'bash'
-#   args:
-#   - '-c'
-#   - |
-#     gcloud compute ssh taxgpt-database --ssh-key-file=/builder/home/.ssh/cloud_key --zone us-central1-f  \
-#       --command "sudo google_metadata_script_runner startup" \
-#       --project $PROJECT_ID
-#   id: Trigger startup script
-# - name: 'gcr.io/cloud-builders/git'
-#   entrypoint: 'bash'
-#   args:
-#   - '-c'
-#   - |
-#     chmod +x ./deploy.sh
-#   id: Make deploy.sh executable
-# - name: 'gcr.io/cloud-builders/gcloud'
-#   entrypoint: 'bash'
-#   args:
-#   - '-c'
-#   - |
-#     mkdir -p /workspace/.ssh 
-#     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > /workspace/.ssh/id_rsa 
-#     chmod 600 /workspace/.ssh/id_rsa 
-#     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key-pub > /workspace/.ssh/id_rsa.pub 
-#     chmod 600 /workspace/.ssh/id_rsa.pub 
-#     gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --troubleshoot --strict-host-key-checking=no --zone us-central1-f  --command "cat > /home/deploy.sh" -- < ./deploy.sh
-#     gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --troubleshoot --strict-host-key-checking=no --zone us-central1-f  --command "bash /home/deploy.sh"
-#   id: Trying to run deploy script on VM
-# - name: 'gcr.io/cloud-builders/gcloud'
-#   entrypoint: 'bash'
-#   args:
-#   - '-c'
-#   - |
-#     mkdir -p /workspace/.ssh 
-#     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key > /workspace/.ssh/id_rsa 
-#     chmod 600 /workspace/.ssh/id_rsa 
-#     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key-pub > /workspace/.ssh/id_rsa.pub 
-#     chmod 600 /workspace/.ssh/id_rsa.pub 
-#     gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --troubleshoot --strict-host-key-checking=no --zone us-central1-f  --command "docker pull gcr.io/taxgpt-413814/taxgpt-database-image:latest"
-#   id: Trying to pull latest docker image on VM 
-
-
-# gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f --command "bash -s" -- < ./deploy.sh
-
-# docker image inspect gcr.io/taxgpt-413814/taxgpt-database-image:latest | jq -r '.[].RepoDigests[]' | awk -F@ '{print $2}'
+- 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA'
