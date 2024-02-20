@@ -32,19 +32,17 @@ steps:
     chmod 600 /builder/home/.ssh/cloud_key 
     chmod 600 /builder/home/.ssh/cloud_key.pub 
   id: Prepare the SSH keys for the service account
-
-
-
-#  The part below does not seem to work. WTFFFFFF? 
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
   args:
   - '-c'
   - |
-    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/cloud_key --zone us-central1-f  \
+    gcloud compute ssh taxgpt-database --ssh-key-file=/builder/home/.ssh/cloud_key --zone us-central1-f  \
       --command "sudo google_metadata_script_runner startup" \
       --project $PROJECT_ID
   id: Trigger startup script
+
+
 
 # - name: 'gcr.io/cloud-builders/git'
 #   entrypoint: 'bash'
