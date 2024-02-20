@@ -19,6 +19,15 @@ steps:
   - --zone=us-central1-f 
   - --metadata-from-file=google-container-manifest=./manifest.yaml,startup-script=./deploy.sh
   id: Update container manifest and startup script
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    gcloud compute instances update-container taxgpt-database --container-image gcr.io/taxgpt-413814/taxgpt-database-image:latest
+  id: Update the container image on the VM
+
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
   args:
@@ -41,6 +50,10 @@ steps:
       --command "sudo google_metadata_script_runner startup" \
       --project $PROJECT_ID
   id: Trigger startup script
+
+
+
+
 
 
 
