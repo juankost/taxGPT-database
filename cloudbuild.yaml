@@ -10,27 +10,19 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/$PROJECT_ID/taxgpt-database-image:latest']
   id: Pushing updated image to latest tag
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['inspect', 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA', '--format={{.RepoDigests}}']
-  id: Print the digest of the updated docker image
+# - name: 'gcr.io/cloud-builders/docker'
+#   args: ['inspect', 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA', '--format={{.RepoDigests}}']
+#   id: Print the digest of the updated docker image
 - name: 'gcr.io/cloud-builders/gcloud'
   args:
   - compute
   - instances
   - add-metadata
-  - taxgpt-database  # Replace with your VM's name
-  - --zone=us-central1-f  # Replace with your VM's zone
-  - --metadata-from-file=google-container-manifest=./manifest.yaml
-  id: Update container manifest 
-- name: 'gcr.io/cloud-builders/gcloud'
-  args:
-  - compute
-  - instances
-  - add-metadata
-  - taxgpt-database  # Replace with your VM's name
-  - --zone=us-central1-f  # Replace with your VM's zone
-  - --metadata-from-file=startup-script=./deploy.sh
-  id: Set startup script
+  - taxgpt-database  
+  - --zone=us-central1-f 
+  - --metadata-from-file=google-container-manifest=./manifest.yaml,startup-script=./deploy.sh
+  id: Update container manifest and startup script
+
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
   args:
@@ -62,8 +54,8 @@ steps:
     chmod 600 /workspace/.ssh/id_rsa 
     gcloud secrets versions access latest --secret=cloud-build-taxgpt-database-key-pub > /workspace/.ssh/id_rsa.pub 
     chmod 600 /workspace/.ssh/id_rsa.pub 
-    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f  --command "cat > /home/deploy.sh" -- < ./deploy.sh
-    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --strict-host-key-checking=no --zone us-central1-f  --command "bash /home/deploy.sh"
+    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --troubleshoot --strict-host-key-checking=no --zone us-central1-f  --command "cat > /home/deploy.sh" -- < ./deploy.sh
+    gcloud compute ssh taxgpt-database --ssh-key-file=/workspace/.ssh/id_rsa --troubleshoot --strict-host-key-checking=no --zone us-central1-f  --command "bash /home/deploy.sh"
   id: Trying to run deploy script on VM
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
