@@ -1,0 +1,11 @@
+write_files:
+  - path: /etc/profile.d/export_env_vars.sh
+    content: |
+      #!/bin/bash
+      set -a  # Automatically export all variables
+      source /workspace/.env
+      set +a
+
+runcmd:
+  - gsutil cp gs://taxgpt-database-storage/.taxgpt_database_env /workspace/.env
+  - chmod +x /etc/profile.d/export_env_vars.sh

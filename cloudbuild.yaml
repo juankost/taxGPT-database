@@ -1,6 +1,9 @@
 options:
   logging: CLOUD_LOGGING_ONLY
 steps:
+- name: 'gcr.io/cloud-builders/gsutil'
+  args: ['cp', '.env', 'gs://taxgpt-database-storage/.taxgpt_database_env']
+  id: Copying environment variables to Storage bucket
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/taxgpt-database-image:latest', '.']
   id: Creating a new image
@@ -17,7 +20,7 @@ steps:
   - add-metadata
   - taxgpt-database  
   - --zone=us-central1-f 
-  - --metadata-from-file=gce-container-declaration=./container.yaml
+  - --metadata-from-file=gce-container-declaration=./container.yaml,user-data=./cloud-init.yaml
   id: Update container manifest and startup script
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: 'bash'
