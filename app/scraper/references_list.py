@@ -5,10 +5,7 @@ areas of tax laws.
 import os
 from selenium import webdriver
 import pandas as pd
-import sys
-
-sys.path.append("/Users/juankostelec/Google_drive/Projects/tax_backend/src")
-from utils import get_website_html, is_url_to_file  # noqa: E402
+from ..utils import get_website_html, is_url_to_file  # noqa: E402
 
 ROOT_URL = "https://www.fu.gov.si"
 
