@@ -3,7 +3,6 @@ This script crawls the fu.gov.si website and extracts all the references denoted
 areas of tax laws.
 """
 import os
-from selenium import webdriver
 import pandas as pd
 from ..utils import get_website_html, is_url_to_file, get_chrome_driver  # noqa: E402
 

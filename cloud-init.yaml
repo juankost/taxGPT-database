@@ -7,5 +7,8 @@ write_files:
       set +a
 
 runcmd:
+  # Download the .env content from Cloud Storage
   - gsutil cp gs://taxgpt-database-storage/.taxgpt_database_env /workspace/.env
-  - chmod +x /etc/profile.d/export_env_vars.sh
+  - chmod 600 /workspace/.env
+  # - chown root:root /workspace/.env
+  
