@@ -3,12 +3,31 @@ write_files:
     content: |
       #!/bin/bash
       set -a  # Automatically export all variables
-      source /workspace/.env
+      source /home/workspace/.env
       set +a
 
+# runcmd:
+#   # Download the .env content from Cloud Storage
+#   - mkdir -p /home/workspace
+#   - gsutil cp gs://taxgpt-database-storage/.taxgpt_database_env /home/workspace/.env
+#   - chmod 600 /workspace/.env
+#   # - chown root:root /workspace/.env
+
 runcmd:
-  # Download the .env content from Cloud Storage
-  - gsutil cp gs://taxgpt-database-storage/.taxgpt_database_env /workspace/.env
-  - chmod 600 /workspace/.env
-  # - chown root:root /workspace/.env
-  
+  - |
+    # Fetch access token
+    ACCESS_TOKEN="$(curl -H 'Metadata-Flavor: Google' 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token' -s | jq -r '.access_token')"
+    
+    # Fetch secret value
+    SECRET_NAME="taxgpt-database-env"
+    PROJECT_ID="taxgpt-413814"
+    SECRET_VERSION="latest"
+    SECRET_VALUE=$(curl -s \
+      -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+      -H "X-Goog-User-Project: ${PROJECT_ID}" \
+      "https://secretmanager.googleapis.com/v1/projects/${PROJECT_ID}/secrets/${SECRET_NAME}/versions/${SECRET_VERSION}:access" \
+      | jq -r '.payload.data' | base64 --decode)
+    
+    # Use the secret value
+    mkdir -p /home/workspace
+    echo "${SECRET_VALUE}" > /home/workspace/.env

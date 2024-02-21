@@ -23,6 +23,8 @@ gcloud compute instances create INSTANCE_NAME --project=PROJECT_ID --zone=ZONE -
 docker-credential-gcr configure-docker
 docker pull gcr.io/taxgpt-413814/taxgpt-database:tag
 
+compute.7947554465738214187 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICxS5DzTK7eZKCCAG+ax/Nfgq1dO3kf4mPBuyNz+jpEb
+
 ```
 
 
