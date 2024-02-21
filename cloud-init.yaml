@@ -13,21 +13,28 @@
 #   - chmod 600 /workspace/.env
 #   # - chown root:root /workspace/.env
 
+# runcmd:
+#   - |
+#     # Fetch access token
+#     ACCESS_TOKEN="$(curl -H 'Metadata-Flavor: Google' 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token' -s | jq -r '.access_token')"
+    
+#     # Fetch secret value
+#     SECRET_NAME="taxgpt-database-env"
+#     PROJECT_ID="taxgpt-413814"
+#     SECRET_VERSION="latest"
+#     SECRET_VALUE=$(curl -s \
+#       -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+#       -H "X-Goog-User-Project: ${PROJECT_ID}" \
+#       "https://secretmanager.googleapis.com/v1/projects/${PROJECT_ID}/secrets/${SECRET_NAME}/versions/${SECRET_VERSION}:access" \
+#       | jq -r '.payload.data' | base64 --decode)
+    
+#     # Use the secret value
+#     mkdir -p /home/workspace
+#     echo "${SECRET_VALUE}" > /home/workspace/.env
+
 runcmd:
-  - |
-    # Fetch access token
-    ACCESS_TOKEN="$(curl -H 'Metadata-Flavor: Google' 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token' -s | jq -r '.access_token')"
-    
-    # Fetch secret value
-    SECRET_NAME="taxgpt-database-env"
-    PROJECT_ID="taxgpt-413814"
-    SECRET_VERSION="latest"
-    SECRET_VALUE=$(curl -s \
-      -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-      -H "X-Goog-User-Project: ${PROJECT_ID}" \
-      "https://secretmanager.googleapis.com/v1/projects/${PROJECT_ID}/secrets/${SECRET_NAME}/versions/${SECRET_VERSION}:access" \
-      | jq -r '.payload.data' | base64 --decode)
-    
-    # Use the secret value
-    mkdir -p /home/workspace
-    echo "${SECRET_VALUE}" > /home/workspace/.env
+  - echo "Fetching Access Token" > /tmp/debug.log
+  - ACCESS_TOKEN=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | jq -r '.access_token') >> /tmp/debug.log 2>&1
+  - echo "Access Token: ${ACCESS_TOKEN}" >> /tmp/debug.log
+  - SECRET_VALUE=$(curl "https://secretmanager.googleapis.com/v1/projects/taxgpt-413814/secrets/taxgpt-database-env/versions/latest:access" -H "Authorization: Bearer ${ACCESS_TOKEN}" -s | jq -r '.payload.data' | base64 --decode) >> /tmp/debug.log 2>&1
+  - echo "Secret Value: ${SECRET_VALUE}" >> /tmp/debug.log
