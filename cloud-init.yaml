@@ -1,3 +1,4 @@
+#cloud-config
 runcmd:
   - |
     echo "Fetching Access Token" > /tmp/debug.log
