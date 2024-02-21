@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 # from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores.faiss import FAISS
-from app.rag.retrieval import get_context
+from .retrieval.retrieval import get_context
 
 
 class Query(BaseModel):

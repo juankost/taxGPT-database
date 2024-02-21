@@ -1,13 +1,6 @@
 options:
   logging: CLOUD_LOGGING_ONLY
 steps:
-# - name: 'python:3.10'
-#   entrypoint: 'bash'
-#   args:
-#     - '-c'
-#     - |
-#       python -m pip install --upgrade pip setuptools
-#   id: Install setuptools in Build environment
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/taxgpt-database-image:latest', '.']
   id: Creating a new image

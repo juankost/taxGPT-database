@@ -1,5 +1,5 @@
-from app.scraper.references_list import FURSReferencesList
-from app.scraper.scraper import Scraper
+from ..scraper.references_list import FURSReferencesList
+from ..scraper.scraper import Scraper
 import os
 from dotenv import load_dotenv, find_dotenv
 
