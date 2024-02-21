@@ -1,10 +1,10 @@
-write_files:
-  - path: /etc/profile.d/export_env_vars.sh
-    content: |
-      #!/bin/bash
-      set -a  # Automatically export all variables
-      source /home/workspace/.env
-      set +a
+# write_files:
+#   - path: /etc/profile.d/export_env_vars.sh
+#     content: |
+#       #!/bin/bash
+#       set -a  # Automatically export all variables
+#       source /home/workspace/.env
+#       set +a
 
 # runcmd:
 #   # Download the .env content from Cloud Storage
