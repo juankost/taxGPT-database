@@ -2,8 +2,11 @@ from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv, find_dotenv
 from langchain_openai import OpenAIEmbeddings
 import tiktoken
+import openai
+import os
 
 _ = load_dotenv(find_dotenv())  # read local .env file
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def get_context(query, db, k=10, max_context_len=4096):

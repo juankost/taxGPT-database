@@ -4,8 +4,10 @@ from langchain.vectorstores import FAISS
 from dotenv import load_dotenv, find_dotenv
 import tiktoken
 import os
+import openai
 
 _ = load_dotenv(find_dotenv())  # read local .env file
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def check_max_tokens(text, max_tokens=2048):

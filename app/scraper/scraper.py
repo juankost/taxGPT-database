@@ -7,13 +7,9 @@ from selenium import webdriver
 import pandas as pd
 import sys
 import wget
-
-# from unstructured import partition_html
 from langchain_community.document_transformers import Html2TextTransformer
 from langchain_community.document_loaders import AsyncHtmlLoader
-
-sys.path.append("/Users/juankostelec/Google_drive/Projects/taxGPT-database/app")
-from utils import get_website_html, is_url_to_file, make_title_safe  # noqa: E402
+from ..utils import get_website_html, is_url_to_file, make_title_safe  # noqa: E402
 
 FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
 
