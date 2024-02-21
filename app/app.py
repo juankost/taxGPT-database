@@ -1,4 +1,5 @@
 import os
+import openai
 from flask import Flask, jsonify
 from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv, find_dotenv
@@ -17,6 +18,7 @@ class Query(BaseModel):
 
 # Get the Environment variables
 _ = load_dotenv(find_dotenv())  # read local .env file
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Create the Flask app
 app = Flask(__name__)
