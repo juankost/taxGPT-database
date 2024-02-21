@@ -16,16 +16,28 @@ def main():
     reference_data.extract_references()
     reference_data.extract_further_references()
 
-    # 2. Scrape the PiSRIR data
-    scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR)
-    scraper.references_data = scraper.references_data[
-        scraper.references_data["reference_href"].str.startswith("http://www.pisrs.si") is True
-    ]
-    scraper.download_all_references()
+    # 2. Check if there is already vector database backup in storage bucket
+    # backup_reference_data = load_backup_reference_data()  # loads reference data, and vector database if they exist
 
-    # 3. Parse the raw data, enrich metadata
+    # 3. Compare the new data with the backup data
+    new_references = compare_references_to_backup(reference_data, backup_reference_data)
 
-    # 4. Add the processed data to the vector database
+    if len(new_references) > 0:
+        # 2. Scrape the PiSRIR data
+        scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR)
+        # WORKAROUND, SINCE WE ONLY SUPPORT SCRAPING PISRS CURRENTLY
+        scraper.references_data = scraper.references_data[
+            scraper.references_data["reference_href"].str.startswith("http://www.pisrs.si") is True
+        ]
+        scraper.download_all_references()
+
+        # 3. Parse the raw data, enrich metadata
+
+        # 4. Add the processed data to the vector database
+        # add_new_data_to_vector_db()
+
+        # 5. Backup the new data to the storage bucket
+        # backup_new_data_to_bucket()
 
 
 if __name__ == "__main__":

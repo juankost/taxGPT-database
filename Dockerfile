@@ -5,26 +5,21 @@ FROM selenium/standalone-chrome
 # Run commands as root
 USER root
 
-# Install Python pip
+# Copy the repository and install the python package and dependencies
+COPY . /workspace
+WORKDIR /workspace
+
+# Install Python pip and then install the package
 RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py && \
-    python3 -m pip install --no-cache-dir --upgrade pip selenium
-
-# Copy the requirements file and install Python dependencies
-COPY ./requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
-
-# Copy the application code to the container
-COPY ./app /app
+    python3 -m pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e . 
 
 # Expose port 8080
 EXPOSE 8080
 
-# Copy the startup script to the container
-COPY ./startup.sh /app/startup.sh
-
 # Make sure the startup script is executable
-RUN chmod +x /app/startup.sh
+RUN chmod +x /workspace/startup.sh
 
 # Define the command to run the application
-CMD ["/bin/bash", "/app/startup.sh"]
+CMD ["/bin/bash", "/workspace/startup.sh"]

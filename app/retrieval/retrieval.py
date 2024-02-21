@@ -1,6 +1,3 @@
-import os
-
-# from langchain.vectorstores import FAISS
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv, find_dotenv
 from langchain_openai import OpenAIEmbeddings

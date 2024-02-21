@@ -1,1 +1,9 @@
 flask
+pandas
+selenium
+beautifulsoup4  # This is the package name for bs4
+google-cloud-storage  # This is the correct package name for Google Cloud Storage client
+langchain
+langchain_openai
+langchain_community
+tiktoken
