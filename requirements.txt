@@ -7,6 +7,5 @@ langchain
 langchain_openai
 langchain_community
 tiktoken
-dotenv
-setuptools
-distribute
+python-dotenv
+
