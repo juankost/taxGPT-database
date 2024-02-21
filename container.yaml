@@ -8,8 +8,11 @@ spec:
           hostPort: 8080
           containerPort: 8080
           protocol: TCP
-      # securityContext:
-      #   privileged: false
-      # stdin: false
-      # tty: false
-  restartPolicy: Never # Always  # this always restarts the container if it crashes
+      volumeMounts:
+        - mountPath: /workspace/taxgpt_database_env
+          name: env-volume
+  restartPolicy: Never # Use "Always" if you want the container to always restart on crash
+  volumes:
+    - name: env-volume
+      hostPath:
+        path: /etc/taxgpt_database_env

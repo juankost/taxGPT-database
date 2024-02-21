@@ -1,8 +1,6 @@
 #cloud-config
 runcmd:
   - |
-    echo "Fetching Access Token" > /tmp/debug.log
     ACCESS_TOKEN=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | jq -r '.access_token')
-    echo "Access Token: ${ACCESS_TOKEN}" >> /tmp/debug.log
     SECRET_VALUE=$(curl "https://secretmanager.googleapis.com/v1/projects/taxgpt-413814/secrets/taxgpt-database-env/versions/latest:access" -H "Authorization: Bearer ${ACCESS_TOKEN}" -s | jq -r '.payload.data' | base64 --decode)
-    echo "Secret Value: ${SECRET_VALUE}" >> /tmp/debug.log
+    echo "Secret Value: ${SECRET_VALUE}" >> /etc/taxgpt_database_env/.env
