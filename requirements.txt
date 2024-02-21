@@ -9,3 +9,5 @@ langchain_community
 tiktoken
 dotenv
 setuptools
+wheel
+distribute
