@@ -13,7 +13,7 @@ WORKDIR /workspace
 RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py && \
     python3 -m pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e . 
+    pip install --use-pep517 --no-cache-dir -e . 
 
 # Expose port 8080
 EXPOSE 8080

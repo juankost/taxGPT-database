@@ -12,4 +12,4 @@ spec:
       #   privileged: false
       # stdin: false
       # tty: false
-  restartPolicy: Always  # this always restarts the container if it crashes
+  restartPolicy: Never # Always  # this always restarts the container if it crashes
