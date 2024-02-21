@@ -3,20 +3,21 @@ This script crawls the fu.gov.si website and extracts all the references denoted
 areas of tax laws.
 """
 import os
+from threading import local
 from selenium import webdriver
 import pandas as pd
 import sys
 import wget
 from langchain_community.document_transformers import Html2TextTransformer
 from langchain_community.document_loaders import AsyncHtmlLoader
-from ..utils import get_website_html, is_url_to_file, make_title_safe  # noqa: E402
+from ..utils import get_website_html, is_url_to_file, make_title_safe, get_chrome_driver  # noqa: E402
 
 FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
 
 
 class Scraper:
     def __init__(self, references_data_path, output_dir):
-        self.driver = webdriver.Chrome()
+        self.driver = get_chrome_driver(local=False)
         self.references_data_path = references_data_path
         self.references_data = pd.read_csv(references_data_path)
         self.output_dir = output_dir
@@ -323,15 +324,7 @@ if __name__ == "__main__":
     # scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR)
     # scraper.download_all_references()
 
-    sys.path.append(
-        "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chromedriver/mac_arm-121.0.6167.85/chromedriver-mac-arm64/chromedriver"
-    )
-    chromedriver_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chromedriver/mac_arm-121.0.6167.85/chromedriver-mac-arm64/chromedriver"
-    browser_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chrome/mac_arm-121.0.6167.85/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
-    option = webdriver.ChromeOptions()
-    option.binary_location = browser_path
-    browser = webdriver.Chrome(options=option)
-
+    browser = get_chrome_driver(local=True)
     # Let's test the new Scraper over the EURLUX website
     print("Testing")
     url = "https://eur-lex.europa.eu/legal-content/SL/TXT/HTML/?uri=CELEX:32012R0815&qid=1628753057527&from=EN"

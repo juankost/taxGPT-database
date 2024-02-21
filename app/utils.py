@@ -1,5 +1,6 @@
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import sys
 import os
@@ -9,16 +10,30 @@ from google.cloud import storage
 FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
 
 
-def get_website_html(file_url, driver=None, close_driver=True):
-    if driver is None:
+def get_chrome_driver(local=False):
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")  # Bypass OS security model, REQUIRED for Docker. Use with caution.
+    chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems.
+    chrome_options.add_argument("--disable-gpu")  # Applicable to windows os only
+    chrome_options.add_argument("start-maximized")  #
+    chrome_options.add_argument("disable-infobars")
+    chrome_options.add_argument("--disable-extensions")
+
+    if local:
         sys.path.append(
             "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chromedriver/mac_arm-121.0.6167.85/chromedriver-mac-arm64/chromedriver"
         )
         browser_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chrome/mac_arm-121.0.6167.85/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
-        option = webdriver.ChromeOptions()
-        option.binary_location = browser_path
-        driver = webdriver.Chrome(options=option)
+        chrome_options.binary_location = browser_path
 
+    driver = webdriver.Chrome(options=chrome_options)
+    return driver
+
+
+def get_website_html(file_url, driver=None, close_driver=True):
+    if driver is None:
+        driver = get_chrome_driver(local=False)
     try:
         driver.get(file_url)
         WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")

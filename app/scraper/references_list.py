@@ -5,7 +5,7 @@ areas of tax laws.
 import os
 from selenium import webdriver
 import pandas as pd
-from ..utils import get_website_html, is_url_to_file  # noqa: E402
+from ..utils import get_website_html, is_url_to_file, get_chrome_driver  # noqa: E402
 
 ROOT_URL = "https://www.fu.gov.si"
 
@@ -15,7 +15,7 @@ ROOT_URL = "https://www.fu.gov.si"
 
 class FURSReferencesList:
     def __init__(self, root_url, output_dîr):
-        self.driver = webdriver.Chrome()
+        self.driver = get_chrome_driver(local=False)
         self.furs_root_url = root_url
         self.furs_overview_url = os.path.join(root_url, "podrocja")
         self.references_data_path = os.path.join(self.output_dir, "references.csv")
