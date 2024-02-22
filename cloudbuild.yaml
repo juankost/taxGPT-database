@@ -1,27 +1,6 @@
 options:
   logging: CLOUD_LOGGING_ONLY
 steps:
-
-# - name: 'gcr.io/cloud-builders/gcloud'
-#   entrypoint: 'bash'
-#   args:
-#   - '-c'
-#   - |
-#     if ! gcloud secrets describe taxgpt-database-env --project=$PROJECT_ID; then
-#       gcloud secrets create taxgpt-database-env --replication-policy="automatic" --project=$PROJECT_ID
-#     fi
-#   id: Creating the secret if it does not exist
-# - name: 'gcr.io/cloud-builders/gcloud'
-#   args: ['secrets', 'versions', 'add', 'taxgpt-database-env', '--data-file', '.env']
-#   id: Updating the secret with the content of the .env file
-# - name: 'gcr.io/cloud-builders/gcloud'
-#   entrypoint: 'bash'
-#   args:
-#   - '-c'
-#   - |
-#     gcloud secrets versions access latest --secret=taxgpt-database-env > .taxgpt_database_env
-#     gsutil cp .taxgpt_database_env gs://taxgpt-database-storage/.taxgpt_database_env
-#   id: Copying environment variables from secret manager
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'gcr.io/$PROJECT_ID/taxgpt-database-image:$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/taxgpt-database-image:latest', '.']
   id: Creating a new image
