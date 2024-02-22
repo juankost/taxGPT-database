@@ -17,8 +17,8 @@ class FURSReferencesList:
         self.driver = get_chrome_driver(local=False)
         self.furs_root_url = root_url
         self.furs_overview_url = os.path.join(root_url, "podrocja")
-        self.references_data_path = os.path.join(self.output_dir, "references.csv")
         self.output_dir = output_dîr
+        self.references_data_path = os.path.join(self.output_dir, "references.csv")
 
         # Get the HTML of the overview page
         self.overview_page_soup = get_website_html(self.furs_overview_url, driver=self.driver, close_driver=False)

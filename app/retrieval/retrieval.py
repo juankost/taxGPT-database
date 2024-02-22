@@ -10,6 +10,8 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def get_context(query, db, k=10, max_context_len=4096):
+    if db is None:
+        return "Database not loaded. Please try again later."
     # Get the top K results
     enc = tiktoken.encoding_for_model("gpt-4")
     docs = db.similarity_search(query, k=k)

@@ -1,6 +1,6 @@
 import os
 import openai
-from flask import Flask, jsonify
+from fastapi import FastAPI
 from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv, find_dotenv
 from pydantic import BaseModel
@@ -20,8 +20,6 @@ class Query(BaseModel):
 _ = load_dotenv(find_dotenv())  # read local .env file
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Create the Flask app
-app = Flask(__name__)
 
 # Initialize the vector store
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
@@ -32,15 +30,23 @@ except Exception as e:
     print("Error loading the database", e)
     db = None
 
+# Create the FastAPI app
+app = FastAPI()
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
 
 # Create the API route to retrieve context
-@app.route("/get_context", methods=["POST"])
+@app.post("/get_context")
 def get_context_api(message: Query):
     query = message.query
     k = message.k
     max_context_len = message.max_context_len
     context = get_context(query, db, k, max_context_len)
-    return jsonify(context)
+    return context
 
 
 # TODO: API Route to retrieve the actual document based on the metadata?
