@@ -9,7 +9,7 @@ spec:
           containerPort: 8080
           protocol: TCP
       volumeMounts:
-        - mountPath: /workspace/taxgpt_database_env
+        - mountPath: /workspace
           name: env-volume
   restartPolicy: Never # Use "Always" if you want the container to always restart on crash
   volumes:

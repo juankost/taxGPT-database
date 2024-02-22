@@ -17,20 +17,24 @@ class Query(BaseModel):
 
 
 # Get the Environment variables
-# _ = load_dotenv(find_dotenv())  # read local .env file
-# print("Loading .env file from", find_dotenv())
+_ = load_dotenv(find_dotenv())  # read local .env file
+print("Loading .env file from", find_dotenv())
+print("Environment variables: ", os.environ)
 load_dotenv("/workspace/taxgpt_database_env/.env")
 print("Environment variables: ", os.environ)
-
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Create the Flask app
 app = Flask(__name__)
 
 # Initialize the vector store
-DB_PATH = os.getenv("VECTOR_DB_PATH")
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-db = FAISS.load_local(DB_PATH, embeddings)
+try:
+    DB_PATH = os.getenv("VECTOR_DB_PATH")
+    db = FAISS.load_local(DB_PATH, embeddings)
+except Exception as e:
+    print("Error loading the database", e)
+    db = None
 
 
 # Create the API route to retrieve context
