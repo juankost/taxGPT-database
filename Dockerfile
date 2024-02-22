@@ -6,21 +6,20 @@ FROM selenium/standalone-chrome
 USER root
 
 # Copy the repository and install the python package and dependencies
-COPY . /workspace
-WORKDIR /workspace
+COPY . /workspace/src
+WORKDIR /workspace/src
 
 # Install Python pip and then install the package
 RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py && \
     python3 -m pip install --upgrade pip setuptools wheel && \
     python3 -m pip install -e .   
-# --no-cache-dir
 
 # Expose port 8080
 EXPOSE 8080
 
 # Make sure the startup script is executable
-RUN chmod +x /workspace/startup.sh
+RUN chmod +x /workspace/src/startup.sh
 
 # Define the command to run the application
-CMD ["/bin/bash", "/workspace/startup.sh"]
+CMD ["/bin/bash", "/workspace/src/startup.sh"]
