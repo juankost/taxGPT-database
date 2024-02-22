@@ -18,10 +18,6 @@ class Query(BaseModel):
 
 # Get the Environment variables
 _ = load_dotenv(find_dotenv())  # read local .env file
-print("Loading .env file from", find_dotenv())
-print("Environment variables: ", os.environ)
-load_dotenv("/workspace/taxgpt_database_env/.env")
-print("Environment variables: ", os.environ)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Create the Flask app

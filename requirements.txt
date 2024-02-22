@@ -11,3 +11,4 @@ python-dotenv
 wget
 openai
 faiss-cpu
+uvicorn
