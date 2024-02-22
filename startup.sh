@@ -2,7 +2,7 @@
 
 # Load environment variables
 set -a  # Automatically export all variables
-source /workspace/.env
+source /workspace/taxgpt_database_env/.env
 set +a
 
 # Run data pipeline
