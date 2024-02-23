@@ -13,12 +13,15 @@ FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "c
 
 
 class Scraper:
-    def __init__(self, references_data_path, output_dir):
-        self.driver = get_chrome_driver(local=False)
+    def __init__(self, references_data_path, output_dir, local=False):
+        self.driver = get_chrome_driver(local=local)
         self.references_data_path = references_data_path
         self.references_data = pd.read_csv(references_data_path)
         self.output_dir = output_dir
         self.aleady_downloaded_clean_links = []
+
+        # Make sure the output dir exists
+        os.makedirs(output_dir, exist_ok=True)
 
     def download_all_references(self):
         """
@@ -38,7 +41,7 @@ class Scraper:
         idx_to_download_info = {}  # idx: (actual_download_link, downloaded_location)
         for idx, row in self.references_data.iterrows():
             # HACK: SINCE WE ONLY SUPPORT SCRAPING PISRS CURRENTLY
-            if not row["reference_href"].str.startswith("http://www.pisrs.si"):
+            if not row["reference_href"].startswith("http://www.pisrs.si"):
                 continue
 
             reference_href_clean = str(row["reference_href_clean"]).split("#")[0]

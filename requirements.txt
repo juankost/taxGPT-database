@@ -2,6 +2,7 @@ pandas
 selenium
 beautifulsoup4
 google-cloud-storage
+google-auth
 langchain
 langchain_openai
 langchain_community
@@ -13,3 +14,4 @@ faiss-cpu
 uvicorn
 fastapi
 argparse
+tqdm

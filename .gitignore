@@ -6,3 +6,6 @@
 .DS_Store
 /chromedriver
 /chrome
+taxgpt_database.egg-info
+__pycache__
+```
