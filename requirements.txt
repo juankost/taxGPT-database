@@ -6,7 +6,7 @@ google-auth
 langchain
 langchain_openai
 langchain_community
-tiktoken
+tiktoken>=0.6.0  # otherwise the text-embedding-3-large model does not get recognized
 python-dotenv
 wget
 openai
@@ -15,3 +15,4 @@ uvicorn
 fastapi
 argparse
 tqdm
+backoff

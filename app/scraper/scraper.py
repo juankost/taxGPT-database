@@ -5,6 +5,7 @@ areas of tax laws.
 import os
 import pandas as pd
 import wget
+from dotenv import load_dotenv
 import tqdm
 from langchain_community.document_transformers import Html2TextTransformer
 from langchain_community.document_loaders import AsyncHtmlLoader
@@ -13,7 +14,9 @@ from ..utils import get_website_html, is_url_to_file, make_title_safe, get_chrom
 FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
 
 
-# TODO: some of the files fail to get downloaded, (and the actual_download_location) can be populated --> these need to be dealt with 
+# TODO: some of the files fail to get downloaded, (and the actual_download_location) can be populated
+# --> these need to be dealt with
+
 
 class Scraper:
     def __init__(self, references_data_path, output_dir, local=False):
@@ -337,16 +340,16 @@ class ScrapeGOVsi(Scraper):
 
 
 if __name__ == "__main__":
+    # For development purposes
+    _ = load_dotenv(".env.local")  # read local .env file
+
     # Download all the data
-    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data"
-    RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/raw_files"
+    METADATA_DIR = os.getenv("METADATA_DIR")
+    RAW_DATA_DIR = os.getenv("RAW_DATA_DIR")
 
-    # scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR)
-    # scraper.download_all_references()
+    scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=True)
+    scraper.download_all_references()
 
-    browser = get_chrome_driver(local=True)
     # Let's test the new Scraper over the EURLUX website
-    print("Testing")
     url = "https://eur-lex.europa.eu/legal-content/SL/TXT/HTML/?uri=CELEX:32012R0815&qid=1628753057527&from=EN"
-    output_dir = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_eurlux_data.txt"
-    ScrapeEURLex.download_custom_website(url, None, output_dir, driver=browser)
+    ScrapeEURLex.download_custom_website(url, None, RAW_DATA_DIR, driver=scraper.driver)

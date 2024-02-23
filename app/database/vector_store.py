@@ -1,12 +1,12 @@
-# Create a vector store from the different data sources
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv, find_dotenv
-import tiktoken
 import os
 import openai
 import tqdm
 import json
+import backoff
+from openai import OpenAI
 
 _ = load_dotenv(find_dotenv())  # read local .env file
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -57,6 +57,7 @@ class VectorStore:
             None
 
         """
+        # FOR TESTING PURPOSES
         files_in_dir = os.listdir(self.parsed_data_dir)
         for file_name in tqdm.tqdm(files_in_dir):
             if file_name.endswith(".txt"):
@@ -64,10 +65,9 @@ class VectorStore:
                 dst_data_path = os.path.join(self.processed_data_dir, file_name)
                 src_metadata_path = os.path.join(self.parsed_data_dir, file_name.split(".")[0] + ".metadata")
                 dst_metadata_path = os.path.join(self.processed_data_dir, file_name.split(".")[0] + ".metadata")
-                self.add_file_to_vector_stores(src_data_path, src_metadata_path)
+                self.add_file_to_vector_store(src_data_path, src_metadata_path)
                 os.rename(src_data_path, dst_data_path)
                 os.rename(src_metadata_path, dst_metadata_path)
-
         # Save the vector store locally
         self.db.save_local(self.vector_db_path)
         return
@@ -90,14 +90,50 @@ class VectorStore:
         with open(metadata_path, "r") as f:
             metadatas = json.load(f)
 
+        # Embed the documents manually to be able to control the rate limit of OpenAI
+        embeddings = self.embed_texts(texts)
+        text_embedding_pairs = zip(texts, embeddings)
+
         if self.db is None:
-            self.db = FAISS.from_texts(texts, self.embeddings, metadatas=metadatas)
+            self.db = FAISS.from_embeddings(text_embedding_pairs, self.embeddings, metadatas=metadatas)
         else:
             self.db.add_texts(texts, metadatas=metadatas)
 
+    def embed_texts(self, texts):
+        client = OpenAI()
+        model = "text-embedding-3-large"
+        embeddings = []
+        batch_size = 10
+
+        @backoff.on_exception(backoff.expo, openai.RateLimitError)
+        def get_embeddings_with_backoff(texts, model="text-embedding-3-small"):
+            response = client.embeddings.create(input=texts, model=model)
+            embeddings = [None] * len(texts)
+            for choice in response.data:
+                embeddings[choice.index] = choice.embedding
+            return embeddings
+
+        for i in range(0, len(texts), batch_size):
+            embeddings.extend(get_embeddings_with_backoff(texts[i : i + batch_size], model=model))  # noqa: E203
+        return embeddings
+
 
 if __name__ == "__main__":
-    # ROOT_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-backend"
-    # processed_data_dir = os.path.join(ROOT_DIR, "data/processed_files")
-    # db_path = os.path.join(ROOT_DIR, "data/vector_store/faiss_index_all_laws")
-    # update_or_create_vector_store(db_path, processed_data_dir)
+    # For development purposes
+    _ = load_dotenv(".env.local")  # read local .env file
+
+    # Download all the data
+    METADATA_DIR = os.getenv("METADATA_DIR")
+    RAW_DATA_DIR = os.getenv("RAW_DATA_DIR")
+    PARSED_DATA_DIR = os.getenv("PARSED_DATA_DIR")
+    PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
+    VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
+    reference_data_path = os.path.join(METADATA_DIR, "references.csv")
+
+    vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH)
+    vector_store.update_or_create_vector_store()
+
+    # embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+    # query = "The quick brown fox jumps over the lazy dog."
+    # embedding = embeddings.embed_query(query)
+    # print(query)

@@ -2,6 +2,8 @@ import os
 from google.cloud import storage
 import google.auth
 
+"""Utils for interacting with Google Cloud Storage (GCS)."""
+
 
 def authenticate_gcs(local=False):
     if not local:
@@ -61,6 +63,28 @@ def download_blob(bucket_name, source_blob_name, destination_file_name, local=Fa
         print(f"Blob {source_blob_name} downloaded to {destination_file_name}.")
 
 
+def download_folder(bucket_name, folder_prefix, local_destination_dir, local=False):
+    """Downloads all blobs in a folder from the bucket to a local directory."""
+    storage_client = authenticate_gcs(local=local)
+    bucket = storage_client.bucket(bucket_name)
+
+    # Ensure the folder_prefix ends with a '/' to properly match all objects within the folder
+    if not folder_prefix.endswith("/"):
+        folder_prefix += "/"
+
+    blobs = bucket.list_blobs(prefix=folder_prefix)
+    for blob in blobs:
+        # Construct the local filepath to save the downloaded file
+        local_file_path = os.path.join(local_destination_dir, blob.name[len(folder_prefix) :])  # noqa: E203
+
+        # Create any necessary directories for nested objects
+        os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+
+        # Download the blob to the local_file_path
+        blob.download_to_filename(local_file_path)
+        print(f"Downloaded {blob.name} to {local_file_path}.")
+
+
 def check_blob_exists(bucket_name, blob_name, local=False):
     """Check if a blob exists in the specified GCS bucket."""
     storage_client = authenticate_gcs(local=local)
@@ -68,3 +92,19 @@ def check_blob_exists(bucket_name, blob_name, local=False):
     blob = bucket.blob(blob_name)
 
     return blob.exists()
+
+
+def check_folder_exists(bucket_name, folder_name, local=False):
+    """Check if any objects exist within the specified 'folder' in the GCS bucket."""
+    storage_client = authenticate_gcs(local=local)
+    bucket = storage_client.bucket(bucket_name)
+
+    # Ensure the folder_name ends with a '/' to properly check the prefix
+    if not folder_name.endswith("/"):
+        folder_name += "/"
+
+    # Create a blob iterator with the prefix set to the folder name
+    blobs = bucket.list_blobs(prefix=folder_name, max_results=1)
+
+    # Try to fetch one object to see if the iterator has any results
+    return any(True for _ in blobs)

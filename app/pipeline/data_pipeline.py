@@ -5,7 +5,14 @@ import openai
 from dotenv import load_dotenv, find_dotenv
 from ..scraper.references_list import FURSReferencesList
 from ..scraper.scraper import Scraper
-from ..storage.storage_bucket import download_blob, upload_blob, upload_folder_to_bucket, check_blob_exists
+from ..storage.storage_bucket import (
+    download_blob,
+    download_folder,
+    upload_blob,
+    upload_folder_to_bucket,
+    check_blob_exists,
+    check_folder_exists,
+)
 from ..database.vector_store import VectorStore
 from ..parser.text_parser import Parser
 
@@ -22,7 +29,7 @@ def load_database(local=False):
     # If the storage bucket does not contain the database, then we need to call the update_database function
     if (
         STORAGE_BUCKET_NAME is None
-        or not check_blob_exists(STORAGE_BUCKET_NAME, "vector_database", local=local)
+        or not check_folder_exists(STORAGE_BUCKET_NAME, "vector_database", local=local)
         or not check_blob_exists(STORAGE_BUCKET_NAME, "references.csv", local=local)
     ):
         logging.info("Database not found in the storage bucket. Updating the database.")
@@ -30,7 +37,7 @@ def load_database(local=False):
     else:
         logging.info("Database found in the storage bucket. Downloading the database.")
         download_blob(STORAGE_BUCKET_NAME, "references.csv", os.path.join(METADATA_DIR, "references.csv"), local=local)
-        download_blob(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
+        download_folder(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
 
 def update_database(local=False):
@@ -44,27 +51,27 @@ def update_database(local=False):
     STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
     reference_data_path = os.path.join(METADATA_DIR, "references.csv")
 
-    # logging.info("Updating the database")
+    logging.info("Updating the database")
 
-    # # 1. Load the backup if it exists
-    # if STORAGE_BUCKET_NAME is not None:
-    #     download_blob(STORAGE_BUCKET_NAME, "references.csv", reference_data_path, local=local)
-    #     download_blob(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
+    # 1. Load the backup if it exists
+    if STORAGE_BUCKET_NAME is not None:
+        download_blob(STORAGE_BUCKET_NAME, "references.csv", reference_data_path, local=local)
+        download_folder(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
-    # # 2. Update the raw sources list; returns the dataframe containing the new references to scrape
-    # logging.info("Updating the raw sources list")
-    # reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=local)
-    # reference_data.update_references()
+    # 2. Update the raw sources list; returns the dataframe containing the new references to scrape
+    logging.info("Updating the raw sources list")
+    reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=local)
+    reference_data.update_references()
 
-    # # 3. Scrape the data
-    # logging.info("Scraping the data")
-    # scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=local)
-    # scraper.download_all_references()
+    # 3. Scrape the data
+    logging.info("Scraping the data")
+    scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=local)
+    scraper.download_all_references()
 
-    # # 4. Backup reference.csv file to the storage bucket
-    # if STORAGE_BUCKET_NAME is not None:
-    #     logging.info(f"Uploading references.csv to the storage bucket {STORAGE_BUCKET_NAME}")
-    #     upload_blob(STORAGE_BUCKET_NAME, os.path.join(METADATA_DIR, "references.csv"), "references.csv", local=local)
+    # 4. Backup reference.csv file to the storage bucket
+    if STORAGE_BUCKET_NAME is not None:
+        logging.info(f"Uploading references.csv to the storage bucket {STORAGE_BUCKET_NAME}")
+        upload_blob(STORAGE_BUCKET_NAME, os.path.join(METADATA_DIR, "references.csv"), "references.csv", local=local)
 
     # 6. Parse the raw data
     logging.info("Parsing the raw data")
@@ -91,7 +98,7 @@ def main():
 
     logging.info("Loading the environment variables")
     if args.local:
-        load_dotenv(".local.env", override=True, verbose=True)
+        load_dotenv(".env.local", override=True, verbose=True)
     else:
         load_dotenv(find_dotenv())
     openai.api_key = os.getenv("OPENAI_API_KEY")
