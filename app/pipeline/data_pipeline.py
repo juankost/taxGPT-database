@@ -36,6 +36,9 @@ def load_database(local=False):
         update_database(local=local)
     else:
         logging.info("Database found in the storage bucket. Downloading the database.")
+
+        os.makedirs(METADATA_DIR, exist_ok=True)
+        os.makedirs(VECTOR_DB_PATH, exist_ok=True)
         download_blob(STORAGE_BUCKET_NAME, "references.csv", os.path.join(METADATA_DIR, "references.csv"), local=local)
         download_folder(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
@@ -53,8 +56,10 @@ def update_database(local=False):
 
     logging.info("Updating the database")
 
-    # 1. Load the backup if it exists
-    if STORAGE_BUCKET_NAME is not None:
+    # 1. Load the backup if it exists - we only load the references.csv file if the vector database exists
+    if STORAGE_BUCKET_NAME is not None and check_folder_exists(STORAGE_BUCKET_NAME, "vector_database", local=local):
+        os.makedirs(METADATA_DIR, exist_ok=True)
+        os.makedirs(VECTOR_DB_PATH, exist_ok=True)
         download_blob(STORAGE_BUCKET_NAME, "references.csv", reference_data_path, local=local)
         download_folder(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
