@@ -13,6 +13,8 @@ from ..utils import get_website_html, is_url_to_file, make_title_safe, get_chrom
 FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
 
 
+# TODO: some of the files fail to get downloaded, (and the actual_download_location) can be populated --> these need to be dealt with 
+
 class Scraper:
     def __init__(self, references_data_path, output_dir, local=False):
         self.driver = get_chrome_driver(local=local)
@@ -84,7 +86,8 @@ class Scraper:
             self.references_data.at[idx, "used_download_href"] = url_link
             self.references_data.at[idx, "actual_download_link"] = actual_download_link
             self.references_data.at[idx, "actual_download_location"] = actual_download_location
-            self.references_data.at[idx, "is_processed"] = True
+            if actual_download_location is not None:  # in some cases it doesn't find the download link
+                self.references_data.at[idx, "is_processed"] = True
         self.references_data.to_csv(self.references_data_path, index=False)
 
     def download_file(self, url_link, title, idx, idx_to_download_info):

@@ -1,11 +1,12 @@
 import os
 import argparse
 import logging
+import openai
 from dotenv import load_dotenv, find_dotenv
 from ..scraper.references_list import FURSReferencesList
 from ..scraper.scraper import Scraper
 from ..storage.storage_bucket import download_blob, upload_blob, upload_folder_to_bucket, check_blob_exists
-from ..database.vector_store import update_or_create_vector_store
+from ..database.vector_store import VectorStore
 from ..parser.text_parser import Parser
 
 
@@ -37,12 +38,13 @@ def update_database(local=False):
     ROOT_URL = os.getenv("ROOT_URL")
     METADATA_DIR = os.getenv("METADATA_DIR")
     RAW_DATA_DIR = os.getenv("RAW_DATA_DIR")
+    PARSED_DATA_DIR = os.getenv("PARSED_DATA_DIR")
     PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
     STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
     reference_data_path = os.path.join(METADATA_DIR, "references.csv")
 
-    logging.info("Updating the database")
+    # logging.info("Updating the database")
 
     # # 1. Load the backup if it exists
     # if STORAGE_BUCKET_NAME is not None:
@@ -66,12 +68,13 @@ def update_database(local=False):
 
     # 6. Parse the raw data
     logging.info("Parsing the raw data")
-    parser = Parser(reference_data_path, RAW_DATA_DIR, PROCESSED_DATA_DIR, local=local)
+    parser = Parser(reference_data_path, RAW_DATA_DIR, PARSED_DATA_DIR, local=local)
     parser.parse_all_files()
 
     # 7. Add the processed data to the vector database
     logging.info("Adding the processed data to the vector database")
-    update_or_create_vector_store(VECTOR_DB_PATH, PROCESSED_DATA_DIR, local=local)
+    vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH)
+    vector_store.update_or_create_vector_store()
 
     # 8. Backup the updated vector store to the storage bucket
     if STORAGE_BUCKET_NAME is not None:
@@ -91,6 +94,7 @@ def main():
         load_dotenv(".local.env", override=True, verbose=True)
     else:
         load_dotenv(find_dotenv())
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
     if args.update:
         logging.info("Updating the database")
