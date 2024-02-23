@@ -39,7 +39,7 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
 
     if blob.exists():
         blob.download_to_filename(destination_file_name)
-    print(f"Blob {source_blob_name} downloaded to {destination_file_name}.")
+        print(f"Blob {source_blob_name} downloaded to {destination_file_name}.")
 
 
 def check_blob_exists(bucket_name, blob_name):

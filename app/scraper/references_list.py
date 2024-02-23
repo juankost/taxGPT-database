@@ -22,10 +22,10 @@ class FURSReferencesList:
         # Extract or load the references data (if already extracted)
         if os.path.exists(self.references_data_path):
             self.backup_references_list = pd.read_csv(self.references_data_path)
-            self.scrape_references(self, save=False)
+            self.scrape_references(save=False)
         else:
             self.backup_references_list = None
-            self.scrape_references(self, save=False)
+            self.scrape_references(save=False)
         self.compare_references_to_backup()
         self.driver.close()
 
