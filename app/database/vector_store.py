@@ -1,6 +1,6 @@
 # Create a vector store from the different data sources
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv, find_dotenv
 import tiktoken
 import os

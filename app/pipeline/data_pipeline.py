@@ -65,7 +65,7 @@ def update_database():
 def main():
     # Pass a command line argument that decides if we simply load or update the database
     parser = argparse.ArgumentParser(description="Update or load the database")
-    parser.add_argument("--update", type=bool, action="store_true", help="Update the database")
+    parser.add_argument("--update", action="store_true", help="Update the database")
     args = parser.parse_args()
 
     if args.update:
