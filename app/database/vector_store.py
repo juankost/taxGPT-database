@@ -34,12 +34,14 @@ class VectorStore:
 
     """
 
-    def __init__(self, parsed_data_dir, processed_data_dir, vector_db_path, model="gpt-4") -> None:
-        self.embeddings = OpenAIEmbeddings(model=os.environ["GPT_MODEL"])  # gpt-4-0125-preview
+    def __init__(
+        self, parsed_data_dir, processed_data_dir, vector_db_path, embedding_model="text-embedding-3-large"
+    ) -> None:
+        self.embedding_model = embedding_model
+        self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
         self.vector_db_path = vector_db_path
         self.parsed_data_dir = parsed_data_dir
         self.processed_data_dir = processed_data_dir
-        self.model = model
         self.db = None
 
         # Make sure the DB directory exists
@@ -106,7 +108,7 @@ class VectorStore:
         batch_size = 10
 
         @backoff.on_exception(backoff.expo, openai.RateLimitError)
-        def get_embeddings_with_backoff(texts, model="gpt-4"):
+        def get_embeddings_with_backoff(texts, model="text-embedding-3-large"):
             response = client.embeddings.create(input=texts, model=model)
             embeddings = [None] * len(texts)
             for choice in response.data:
@@ -114,7 +116,9 @@ class VectorStore:
             return embeddings
 
         for i in range(0, len(texts), batch_size):
-            embeddings.extend(get_embeddings_with_backoff(texts[i : i + batch_size], model=self.model))  # noqa: E203
+            embeddings.extend(
+                get_embeddings_with_backoff(texts[i : i + batch_size], model=self.embedding_model)  # noqa: E203
+            )  # noqa: E203
         return embeddings
 
 
@@ -128,13 +132,13 @@ if __name__ == "__main__":
     PARSED_DATA_DIR = os.getenv("PARSED_DATA_DIR")
     PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
-    GPT_MODEL = os.getenv("GPT_MODEL")
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
     reference_data_path = os.path.join(METADATA_DIR, "references.csv")
 
     vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH)
     vector_store.update_or_create_vector_store()
 
-    # embeddings = OpenAIEmbeddings(model=GPT_MODEL)
+    # embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     # query = "The quick brown fox jumps over the lazy dog."
     # embedding = embeddings.embed_query(query)
     # print(query)

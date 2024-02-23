@@ -52,7 +52,7 @@ def update_database(local=False):
     PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
     STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
-    GPT_MODEL = os.getenv("GPT_MODEL")
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
     reference_data_path = os.path.join(METADATA_DIR, "references.csv")
 
     logging.info("Updating the database")
@@ -76,12 +76,12 @@ def update_database(local=False):
 
     # 4. Parse the raw data
     logging.info("Parsing the raw data")
-    parser = Parser(reference_data_path, RAW_DATA_DIR, PARSED_DATA_DIR, local=local, model=GPT_MODEL)
+    parser = Parser(reference_data_path, RAW_DATA_DIR, PARSED_DATA_DIR, local=local, model=EMBEDDING_MODEL)
     parser.parse_all_files()
 
     # 5. Add the processed data to the vector database
     logging.info("Adding the processed data to the vector database")
-    vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH, model=GPT_MODEL)
+    vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH, model=EMBEDDING_MODEL)
     vector_store.update_or_create_vector_store()
 
     # 6. Backup the updated vector store to the storage bucket

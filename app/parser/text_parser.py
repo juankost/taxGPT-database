@@ -16,13 +16,13 @@ class Parser:
         local=False,
         max_tokens=2048,
         overlap_tokens=512,
-        model="gpt-4",
+        embedding_model="text-embedding-3-large",
     ):
         self.raw_dir = raw_dir
         self.processed_dir = processed_dir
         self.references_data_path = references_data_path
         self.references_data = pd.read_csv(self.references_data_path)
-        self.model = model
+        self.embedding_model = embedding_model
         self.max_tokens = max_tokens
         self.overlap_tokens = overlap_tokens
         # Make sure the output dir exists
@@ -81,7 +81,7 @@ class Parser:
         return chunks, chunk_metadata
 
     def split_long_text(self, text):
-        enc = tiktoken.encoding_for_model(self.model)
+        enc = tiktoken.encoding_for_model(self.embedding_model)
         tokens = enc.encode(text)
         chunks = []
         for i in range(0, len(tokens), self.max_tokens - self.overlap_tokens):

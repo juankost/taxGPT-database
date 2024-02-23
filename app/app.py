@@ -19,7 +19,7 @@ _ = load_dotenv(find_dotenv())  # read local .env file
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Initialize the vector store
-model = os.environ["GPT_MODEL"]  # gpt-4-0125-preview  has 128k context window
+model = os.environ["GPT_MODEL"]
 embeddings = OpenAIEmbeddings(model=model)
 try:
     DB_PATH = os.getenv("VECTOR_DB_PATH")
