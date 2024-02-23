@@ -5,6 +5,7 @@ areas of tax laws.
 import os
 import pandas as pd
 import wget
+import tqdm
 from langchain_community.document_transformers import Html2TextTransformer
 from langchain_community.document_loaders import AsyncHtmlLoader
 from ..utils import get_website_html, is_url_to_file, make_title_safe, get_chrome_driver  # noqa: E402
@@ -18,7 +19,7 @@ class Scraper:
         self.references_data_path = references_data_path
         self.references_data = pd.read_csv(references_data_path)
         self.output_dir = output_dir
-        self.aleady_downloaded_clean_links = []
+        self.already_downloaded_clean_links = []
 
         # Make sure the output dir exists
         os.makedirs(output_dir, exist_ok=True)
@@ -39,46 +40,48 @@ class Scraper:
         """
 
         idx_to_download_info = {}  # idx: (actual_download_link, downloaded_location)
-        for idx, row in self.references_data.iterrows():
+        for idx, row in tqdm.tqdm(self.references_data.iterrows()):
             # HACK: SINCE WE ONLY SUPPORT SCRAPING PISRS CURRENTLY
-            if not row["reference_href"].startswith("http://www.pisrs.si"):
-                continue
+            if row["reference_href"].startswith("http://www.pisrs.si") or (
+                isinstance(row["details_href"], str) and row["details_href"].startswith("http://www.pisrs.si")
+            ):
+                reference_href_clean = str(row["reference_href_clean"]).split("#")[0]
+                details_href_clean = str(row["details_href"]).split("#")[0]
 
-            reference_href_clean = str(row["reference_href_clean"]).split("#")[0]
-            details_href_clean = str(row["details_href"]).split("#")[0]
-
-            if is_url_to_file(reference_href_clean):
-                self.download_file(
-                    reference_href_clean,
-                    row["reference_name"],
-                    idx,
-                    idx_to_download_info,
-                )
-            elif is_url_to_file(details_href_clean):
-                self.download_file(
-                    details_href_clean,
-                    row["details_href_name"],
-                    idx,
-                    idx_to_download_info,
-                )
-            elif details_href_clean != "nan":
-                self.download_website(
-                    details_href_clean,
-                    row["details_href_name"],
-                    idx,
-                    idx_to_download_info,
-                )
-            else:
-                self.download_website(
-                    reference_href_clean,
-                    row["reference_name"],
-                    idx,
-                    idx_to_download_info,
-                )
+                # The order is important.
+                # First try to download the details href, and if that is nan, then download the reference href
+                if is_url_to_file(details_href_clean):
+                    self.download_file(
+                        details_href_clean,
+                        row["details_href_name"],
+                        idx,
+                        idx_to_download_info,
+                    )
+                elif details_href_clean != "nan":
+                    self.download_website(
+                        details_href_clean,
+                        row["details_href_name"],
+                        idx,
+                        idx_to_download_info,
+                    )
+                elif is_url_to_file(reference_href_clean):
+                    self.download_file(
+                        reference_href_clean,
+                        row["reference_name"],
+                        idx,
+                        idx_to_download_info,
+                    )
+                else:
+                    self.download_website(
+                        reference_href_clean,
+                        row["reference_name"],
+                        idx,
+                        idx_to_download_info,
+                    )
 
         # Update the references_data DataFrame
-        for idx, (actual_download_link, actual_download_location) in idx_to_download_info.items():
-            self.references_data.at[idx, "used_download_href"] = actual_download_link
+        for idx, (url_link, actual_download_link, actual_download_location) in idx_to_download_info.items():
+            self.references_data.at[idx, "used_download_href"] = url_link
             self.references_data.at[idx, "actual_download_link"] = actual_download_link
             self.references_data.at[idx, "actual_download_location"] = actual_download_location
             self.references_data.at[idx, "is_processed"] = True
@@ -98,7 +101,7 @@ class Scraper:
             None
         """
         if url_link in self.already_downloaded_clean_links:
-            actual_download_link_and_paths = [item[1] for item in idx_to_download_info.items() if item[0] == idx]
+            actual_download_link_and_paths = [item[1:] for item in idx_to_download_info.values() if item[0] == url_link]
             idx_to_download_info[idx] = (url_link, *actual_download_link_and_paths[0])
             return
 
@@ -121,38 +124,45 @@ class Scraper:
 
                 # Now update the idx_to_download_info
                 idx_to_download_info[idx] = (url_link, url_link, saved_path)
-
+                self.already_downloaded_clean_links.append(url_link)
             except Exception as e:
                 print(f"Could not download the file {url_link}. Error: ", e)
 
         return
 
-    def download_website(self, url_link, title, idx, already_downloaded_clean_links, idx_to_download_info):
-        if url_link in already_downloaded_clean_links:
-            actual_download_link_and_paths = [item[1] for item in idx_to_download_info.items() if item[0] == idx]
+    def download_website(self, url_link, title, idx, idx_to_download_info):
+        if url_link in self.already_downloaded_clean_links:
+            actual_download_link_and_paths = [item[1:] for item in idx_to_download_info.values() if item[0] == url_link]
             idx_to_download_info[idx] = (url_link, *actual_download_link_and_paths[0])
             return
 
         download_url_link = None
         saved_path = None
         if "eur-lex.europa.eu" in url_link:
-            download_url_link, saved_path = ScrapeEURLex.download_custom_website(url_link, title, driver=self.driver)
+            download_url_link, saved_path = ScrapeEURLex.download_custom_website(
+                url_link, title, output_dir=self.output_dir, driver=self.driver
+            )
             print("Need to download from eur-lex.europa.eu")
         elif ".uradni-list.si" in url_link:
             download_url_link, saved_path = ScrapeUradniList.download_custom_website(
-                url_link, title, driver=self.driver
+                url_link, title, output_dir=self.output_dir, driver=self.driver
             )
             print("Need to download from uradni-list.si")
         elif ".pisrs.si" in url_link:
-            download_url_link, saved_path = ScrapePISRS.download_custom_website(url_link, title, driver=self.driver)
+            download_url_link, saved_path = ScrapePISRS.download_custom_website(
+                url_link, title, output_dir=self.output_dir, driver=self.driver
+            )
         elif "fu.gov.si" in url_link:
             print("Need to download from fu.gov.si")
-            download_url_link, saved_path = ScrapeGOVsi.download_custom_website(url_link, title, driver=self.driver)
+            download_url_link, saved_path = ScrapeGOVsi.download_custom_website(
+                url_link, title, output_dir=self.output_dir, driver=self.driver
+            )
         else:
             print("Need to download from other website: ", url_link)
 
         # Now update the idx_to_download_info
         idx_to_download_info[idx] = (url_link, download_url_link, saved_path)
+        self.already_downloaded_clean_links.append(url_link)
         return
 
 
@@ -178,7 +188,6 @@ class ScrapePISRS(Scraper):
         if pdf_source_url:
             save_path = os.path.join(output_dir, f"{make_title_safe(pdf_resource_title)}.pdf")
             if not os.path.exists(save_path):
-                print(f"Downloading PISRS file: {make_title_safe(pdf_resource_title)} from website {pdf_source_url}")
                 try:
                     wget.download(pdf_source_url, save_path)
                 except Exception as e:

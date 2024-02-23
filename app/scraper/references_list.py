@@ -62,8 +62,10 @@ class FURSReferencesList:
         logging.info("Extracted main references. Extracting further references from the linked websites.")
         self.extract_further_references()
         if save:
+            logging.info("Saving the references list to the output directory")
             os.makedirs(self.output_dir, exist_ok=True)
             self.references_list.to_csv(self.references_data_path, index=False)
+        logging.info("Finished extracting the references list.")
 
     def extract_references(self):
         """
@@ -111,6 +113,7 @@ class FURSReferencesList:
         logging.info("Checking the type of extracted href links")
         typical_website_links, _, _ = self.check_href_type(website_links)
 
+        logging.info("Extracting further references from the typical websites")
         further_references = None
         for url_link in tqdm.tqdm(typical_website_links, position=0, leave=True):
             df = self.extract_further_references_from_furs_websites(url_link)

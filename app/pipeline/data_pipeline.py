@@ -40,34 +40,34 @@ def update_database(local=False):
     PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
     STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
+    reference_data_path = os.path.join(METADATA_DIR, "references.csv")
 
     logging.info("Updating the database")
 
-    # 1. Load the backup if it exists
-    if STORAGE_BUCKET_NAME is not None:
-        reference_data_path = os.path.join(METADATA_DIR, "references.csv")
-        download_blob(STORAGE_BUCKET_NAME, "references.csv", reference_data_path, local=local)
-        download_blob(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
+    # # 1. Load the backup if it exists
+    # if STORAGE_BUCKET_NAME is not None:
+    #     download_blob(STORAGE_BUCKET_NAME, "references.csv", reference_data_path, local=local)
+    #     download_blob(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
-    # 2. Update the raw sources list; returns the dataframe containing the new references to scrape
-    logging.info("Updating the raw sources list")
-    reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=local)
-    reference_data.update_references()
+    # # 2. Update the raw sources list; returns the dataframe containing the new references to scrape
+    # logging.info("Updating the raw sources list")
+    # reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=local)
+    # reference_data.update_references()
 
-    # 3. Scrape the data
-    logging.info("Scraping the data")
-    scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=local)
-    scraper.download_all_references()
+    # # 3. Scrape the data
+    # logging.info("Scraping the data")
+    # scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=local)
+    # scraper.download_all_references()
 
-    # 4. Backup reference.csv file to the storage bucket
-    if STORAGE_BUCKET_NAME is not None:
-        logging.info("Uploading references.csv to the storage bucket")
-        upload_blob(STORAGE_BUCKET_NAME, os.path.join(METADATA_DIR, "references.csv"), "references.csv", local=local)
+    # # 4. Backup reference.csv file to the storage bucket
+    # if STORAGE_BUCKET_NAME is not None:
+    #     logging.info(f"Uploading references.csv to the storage bucket {STORAGE_BUCKET_NAME}")
+    #     upload_blob(STORAGE_BUCKET_NAME, os.path.join(METADATA_DIR, "references.csv"), "references.csv", local=local)
 
     # 6. Parse the raw data
     logging.info("Parsing the raw data")
     parser = Parser(reference_data_path, RAW_DATA_DIR, PROCESSED_DATA_DIR, local=local)
-    parser.parse_all_references()
+    parser.parse_all_files()
 
     # 7. Add the processed data to the vector database
     logging.info("Adding the processed data to the vector database")
@@ -88,7 +88,7 @@ def main():
 
     logging.info("Loading the environment variables")
     if args.local:
-        load_dotenv(".local.env")
+        load_dotenv(".local.env", override=True, verbose=True)
     else:
         load_dotenv(find_dotenv())
 
