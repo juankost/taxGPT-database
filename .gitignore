@@ -1,4 +1,5 @@
 .env 
+.local.env
 **.pyc
 /.vscode
 */.vscode

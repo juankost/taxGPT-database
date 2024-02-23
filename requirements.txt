@@ -12,3 +12,4 @@ openai
 faiss-cpu
 uvicorn
 fastapi
+argparse

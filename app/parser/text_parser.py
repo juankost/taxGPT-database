@@ -1,4 +1,5 @@
 from langchain.document_loaders import PyMuPDFLoader
+import pandas as pd
 
 
 def parse_pdf(path, save_path, file_name=None):
@@ -10,9 +11,16 @@ def parse_pdf(path, save_path, file_name=None):
         f.write(text)
 
 
-# Data Processing steps:
-# 1. Parse the text into the semantically meaningful units (i.e. law articles)
-# 2. Create a summary of the context for each law article (i.e. summarize what is the law about, and summarize what is
-# the seciton about)
-# 3. Embed the law article into vector space, create metadata (LAW NAME; SECTION; URL LINK TO LAW)
-# 4. Add the law article to the vector database
+class Parser:
+    def __init__(self, references_data_path, raw_dir, processed_dir):
+        self.raw_dir = raw_dir
+        self.processed_dir = processed_dir
+        self.references_data_path = references_data_path
+        self.references_data = pd.read_csv(self.references_data_path, index=False)
+
+    def parse_all_files(self):
+        for i, row in self.references_data.iterrows():
+            pass
+            # file_path = row["actual_download_location"]
+            # if file_path.endswith(".pdf"):
+            #     parse_pdf(file_path, self.save_path)

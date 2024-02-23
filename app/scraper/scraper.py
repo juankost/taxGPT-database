@@ -34,8 +34,13 @@ class Scraper:
         Returns:
             None
         """
+
         idx_to_download_info = {}  # idx: (actual_download_link, downloaded_location)
         for idx, row in self.references_data.iterrows():
+            # HACK: SINCE WE ONLY SUPPORT SCRAPING PISRS CURRENTLY
+            if not row["reference_href"].str.startswith("http://www.pisrs.si"):
+                continue
+
             reference_href_clean = str(row["reference_href_clean"]).split("#")[0]
             details_href_clean = str(row["details_href"]).split("#")[0]
 
@@ -68,9 +73,12 @@ class Scraper:
                     idx_to_download_info,
                 )
 
-        self.references_data[
-            ["used_download_href", "actual_download_link", "actual_download_location"]
-        ] = self.podrocja_list_with_links.index.map(idx_to_download_info)
+        # Update the references_data DataFrame
+        for idx, (actual_download_link, actual_download_location) in idx_to_download_info.items():
+            self.references_data.at[idx, "used_download_href"] = actual_download_link
+            self.references_data.at[idx, "actual_download_link"] = actual_download_link
+            self.references_data.at[idx, "actual_download_location"] = actual_download_location
+            self.references_data.at[idx, "is_processed"] = True
         self.references_data.to_csv(self.references_data_path, index=False)
 
     def download_file(self, url_link, title, idx, idx_to_download_info):

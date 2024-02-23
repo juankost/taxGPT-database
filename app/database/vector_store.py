@@ -41,7 +41,7 @@ def split_long_text(text, max_tokens=2048, overlap_tokens=512):
 # Now add the new laws to the vector index
 def add_text_to_vector_store(path, law, embeddings=None, db=None):
     if embeddings is None:
-        embeddings = OpenAIEmbeddings()
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
     # Open .txt file with the text extracted from the law
     with open(path, "r") as f:
@@ -54,19 +54,13 @@ def add_text_to_vector_store(path, law, embeddings=None, db=None):
     if db is None:
         db = FAISS.from_texts(chunks, embeddings, metadatas=metadatas)
     else:
-        # TODO: Only add if the law is not already in the store
-        # existing_laws = [metadata["law"] for metadata in db.get_all_metadatas()]
-        # if law in existing_laws:
-        #     return db
-        # else:
         db.add_texts(chunks, metadatas=metadatas)
-
     return db
 
 
 def update_or_create_vector_store(db_path, processed_data_dir, embeddings=None):
     if embeddings is None:
-        embeddings = OpenAIEmbeddings()
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
     db = None
     if os.path.exists(db_path):
         db = FAISS.load_local(db_path, embeddings)

@@ -4,12 +4,7 @@ areas of tax laws.
 """
 import os
 import pandas as pd
-from ..utils import get_website_html, is_url_to_file, get_chrome_driver  # noqa: E402
-
-ROOT_URL = "https://www.fu.gov.si"
-
-
-# TODO: Extract information also from 'other_websites'
+from ..utils import get_website_html, is_url_to_file, get_chrome_driver
 
 
 class FURSReferencesList:
@@ -23,13 +18,42 @@ class FURSReferencesList:
         # Get the HTML of the overview page
         self.overview_page_soup = get_website_html(self.furs_overview_url, driver=self.driver, close_driver=False)
 
+    def update_references(self):
         # Extract or load the references data (if already extracted)
-        if self.references_data_path:
-            self.podrocja_list_with_links = pd.read_csv(self.references_data_path)
+        if os.path.exists(self.references_data_path):
+            self.backup_references_list = pd.read_csv(self.references_data_path)
+            self.scrape_references(self, save=False)
         else:
-            self.podrocja_list_with_links = self.extract_references()
-            self.extract_further_references()
+            self.backup_references_list = None
+            self.scrape_references(self, save=False)
+        self.compare_references_to_backup()
         self.driver.close()
+
+    def compare_references_to_backup(self):
+        """
+        Compares the references in the current `podrocja_list_with_links` DataFrame to the backup references list.
+        Adds flag to show if reference is new or not.
+        Saves the updated references list to the `references_data_path`.
+        """
+        if self.backup_references_list is None:
+            self.podrocja_list_with_links["is_processed"] = [False] * len(self.podrocja_list_with_links)
+            self.podrocja_list_with_links.to_csv(self.references_data_path, index=False)
+            return
+        else:
+            diff = self.podrocja_list_with_links[
+                ~self.podrocja_list_with_links.reference_href.isin(self.backup_references_list.reference_href)
+            ]
+            diff = diff[~diff.details_href.isin(self.backup_references_list.details_href)]
+            diff["is_processed"] = [False] * len(diff)
+            union = pd.concat([self.backup_references_list, diff], axis=0)
+            union.to_csv(self.references_data_path, index=False)
+            return
+
+    def scrape_references(self, save=True):
+        self.podrocja_list_with_links = self.extract_references()
+        self.extract_further_references()
+        if save:
+            self.podrocja_list_with_links.to_csv(self.references_data_path, index=False)
 
     def extract_references(self):
         """
@@ -55,7 +79,7 @@ class FURSReferencesList:
                     link_name = li.text
                     link_href = li.find("a").get("href")
                     if link_href.startswith("/"):
-                        link_href = ROOT_URL + link_href
+                        link_href = self.furs_root_url + link_href
                     data.append([area_name, area_desc, link_name, link_href])
 
         # Create pandas dataframe to store it
@@ -63,7 +87,6 @@ class FURSReferencesList:
             data=data,
             columns=["area_name", "area_desc", "reference_name", "reference_href"],
         )
-        df.to_csv(self.references_data_path, index=False)
         return df
 
     def get_list_of_further_website_links(self):
@@ -206,5 +229,6 @@ class FURSReferencesList:
 
 
 if __name__ == "__main__":
+    ROOT_URL = "https://www.fu.gov.si"
     METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/tax_backend/data"
     reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR)

@@ -1,43 +1,78 @@
+import os
+import argparse
+
+from dotenv import load_dotenv, find_dotenv
 from ..scraper.references_list import FURSReferencesList
 from ..scraper.scraper import Scraper
-import os
-from dotenv import load_dotenv, find_dotenv
+from ..storage.storage_bucket import download_blob, upload_blob, upload_folder_to_bucket, check_blob_exists
+from ..database.vector_store import update_or_create_vector_store
+from ..parser.text_parser import Parser
 
 # Load the env variables
 load_dotenv(find_dotenv())
 ROOT_URL = os.getenv("ROOT_URL")
 METADATA_DIR = os.getenv("METADATA_DIR")
 RAW_DATA_DIR = os.getenv("RAW_DATA_DIR")
+PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
+VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
+STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
+
+
+def load_database():
+    # If the storage bucket does not contain the database, then we need to call the update_database function
+    if (
+        STORAGE_BUCKET_NAME is None
+        or not check_blob_exists(STORAGE_BUCKET_NAME, "vector_database")
+        or not check_blob_exists(STORAGE_BUCKET_NAME, "references.csv")
+    ):
+        update_database()
+    else:
+        download_blob(STORAGE_BUCKET_NAME, "references.csv", os.path.join(METADATA_DIR, "references.csv"))
+        download_blob(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH)
+
+
+def update_database():
+    # 1. Load the backup if it exists
+    if STORAGE_BUCKET_NAME is not None:
+        reference_data_path = os.path.join(METADATA_DIR, "references.csv")
+        download_blob(STORAGE_BUCKET_NAME, "references.csv", reference_data_path)
+        download_blob(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH)
+
+    # 2. Update the raw sources list; returns the dataframe containing the new references to scrape
+    reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR)
+    reference_data.update_references()
+
+    # 3. Scrape the data
+    scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR)
+    scraper.download_all_references()
+
+    # 4. Backup reference.csv file to the storage bucket
+    if STORAGE_BUCKET_NAME is not None:
+        upload_blob(STORAGE_BUCKET_NAME, os.path.join(METADATA_DIR, "references.csv"), "references.csv")
+
+    # 6. Parse the raw data
+    parser = Parser(reference_data_path, RAW_DATA_DIR, PROCESSED_DATA_DIR)
+    parser.parse_all_references()
+
+    # 7. Add the processed data to the vector database
+    update_or_create_vector_store(VECTOR_DB_PATH, PROCESSED_DATA_DIR)
+
+    # 8. Backup the updated vector store to the storage bucket
+    if STORAGE_BUCKET_NAME is not None:
+        upload_folder_to_bucket(STORAGE_BUCKET_NAME, VECTOR_DB_PATH, "vector_database")
 
 
 def main():
-    # 1. Extract the raw sources list
-    reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR)
-    reference_data.extract_references()
-    reference_data.extract_further_references()
+    # Pass a command line argument that decides if we simply load or update the database
+    parser = argparse.ArgumentParser(description="Update or load the database")
+    parser.add_argument("--update", type=bool, action="store_true", help="Update the database")
+    args = parser.parse_args()
 
-    # 2. Check if there is already vector database backup in storage bucket
-    # backup_reference_data = load_backup_reference_data()  # loads reference data, and vector database if they exist
-
-    # 3. Compare the new data with the backup data
-    new_references = compare_references_to_backup(reference_data, backup_reference_data)
-
-    if len(new_references) > 0:
-        # 2. Scrape the PiSRIR data
-        scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR)
-        # WORKAROUND, SINCE WE ONLY SUPPORT SCRAPING PISRS CURRENTLY
-        scraper.references_data = scraper.references_data[
-            scraper.references_data["reference_href"].str.startswith("http://www.pisrs.si") is True
-        ]
-        scraper.download_all_references()
-
-        # 3. Parse the raw data, enrich metadata
-
-        # 4. Add the processed data to the vector database
-        # add_new_data_to_vector_db()
-
-        # 5. Backup the new data to the storage bucket
-        # backup_new_data_to_bucket()
+    if args.update:
+        update_database()
+    else:
+        load_database()
+    return
 
 
 if __name__ == "__main__":
