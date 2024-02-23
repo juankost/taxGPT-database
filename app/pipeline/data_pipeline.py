@@ -52,6 +52,7 @@ def update_database(local=False):
     PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
     STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
+    GPT_MODEL = os.getenv("GPT_MODEL")
     reference_data_path = os.path.join(METADATA_DIR, "references.csv")
 
     logging.info("Updating the database")
@@ -73,25 +74,22 @@ def update_database(local=False):
     scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=local)
     scraper.download_all_references()
 
-    # 4. Backup reference.csv file to the storage bucket
-    if STORAGE_BUCKET_NAME is not None:
-        logging.info(f"Uploading references.csv to the storage bucket {STORAGE_BUCKET_NAME}")
-        upload_blob(STORAGE_BUCKET_NAME, os.path.join(METADATA_DIR, "references.csv"), "references.csv", local=local)
-
-    # 6. Parse the raw data
+    # 4. Parse the raw data
     logging.info("Parsing the raw data")
-    parser = Parser(reference_data_path, RAW_DATA_DIR, PARSED_DATA_DIR, local=local)
+    parser = Parser(reference_data_path, RAW_DATA_DIR, PARSED_DATA_DIR, local=local, model=GPT_MODEL)
     parser.parse_all_files()
 
-    # 7. Add the processed data to the vector database
+    # 5. Add the processed data to the vector database
     logging.info("Adding the processed data to the vector database")
-    vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH)
+    vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH, model=GPT_MODEL)
     vector_store.update_or_create_vector_store()
 
-    # 8. Backup the updated vector store to the storage bucket
+    # 6. Backup the updated vector store to the storage bucket
     if STORAGE_BUCKET_NAME is not None:
         logging.info("Uploading vector database to the storage bucket")
         upload_folder_to_bucket(STORAGE_BUCKET_NAME, VECTOR_DB_PATH, "vector_database", local=local)
+        logging.info(f"Uploading references.csv to the storage bucket {STORAGE_BUCKET_NAME}")
+        upload_blob(STORAGE_BUCKET_NAME, os.path.join(METADATA_DIR, "references.csv"), "references.csv", local=local)
 
 
 def main():

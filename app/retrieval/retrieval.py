@@ -1,17 +1,7 @@
-from langchain_community.vectorstores import FAISS
-from dotenv import load_dotenv, find_dotenv
-from langchain_openai import OpenAIEmbeddings
 import tiktoken
-import openai
-import os
-
-_ = load_dotenv(find_dotenv())  # read local .env file
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def get_context(query, db, k=10, max_context_len=4096):
-    if db is None:
-        return "Database not loaded. Please try again later."
     # Get the top K results
     enc = tiktoken.encoding_for_model("gpt-4")
     docs = db.similarity_search(query, k=k)
@@ -29,12 +19,16 @@ def get_context(query, db, k=10, max_context_len=4096):
 if __name__ == "__main__":
     ROOT_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-backend"
     query = " kdo je davcni rezident Slovenije?"
+    from dotenv import load_dotenv, find_dotenv
+    from langchain_community.vectorstores import FAISS
+    from langchain_openai import OpenAIEmbeddings
+    import os
 
-    # db = FAISS.load_local(os.path.join(ROOT_DIR, "data/vector_store/faiss_index_all_laws"), OpenAIEmbeddings())
-    # context = get_context(query, db)
-    # print(context)
+    _ = load_dotenv(find_dotenv())  # read local .env file
 
-    # Use timeit to time how long the database takes to load
+    db = FAISS.load_local(os.path.join(ROOT_DIR, "data/vector_store/faiss_index_all_laws"), OpenAIEmbeddings())
+    context = get_context(query, db)
+    print(context)
 
     # Use timeit to time how long the database takes to load
     import timeit

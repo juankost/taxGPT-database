@@ -4,8 +4,6 @@ from fastapi import FastAPI
 from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv, find_dotenv
 from pydantic import BaseModel
-
-# from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores.faiss import FAISS
 from .retrieval.retrieval import get_context
 
@@ -20,9 +18,9 @@ class Query(BaseModel):
 _ = load_dotenv(find_dotenv())  # read local .env file
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-
 # Initialize the vector store
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+model = os.environ["GPT_MODEL"]  # gpt-4-0125-preview  has 128k context window
+embeddings = OpenAIEmbeddings(model=model)
 try:
     DB_PATH = os.getenv("VECTOR_DB_PATH")
     db = FAISS.load_local(DB_PATH, embeddings)
