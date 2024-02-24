@@ -1,9 +1,9 @@
 import tiktoken
 
 
-def get_context(query, db, k=10, max_context_len=4096):
+def get_context(query, db, k=10, max_context_len=4096, embedding_model="text-embedding-3-large"):
     # Get the top K results
-    enc = tiktoken.encoding_for_model("gpt-4")
+    enc = tiktoken.encoding_for_model(embedding_model)
     docs = db.similarity_search(query, k=k)
     law_articles_text = [doc.page_content for doc in docs]
     law_articles_sources = [doc.metadata for doc in docs]

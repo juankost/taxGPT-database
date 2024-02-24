@@ -60,7 +60,6 @@ class VectorStore:
             None
 
         """
-        # FOR TESTING PURPOSES
         files_in_dir = os.listdir(self.parsed_data_dir)
         for file_name in tqdm.tqdm(files_in_dir):
             if file_name.endswith(".txt"):
