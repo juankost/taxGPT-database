@@ -1,4 +1,5 @@
 import tiktoken
+import logging
 
 
 def get_context(query, db, k=10, max_context_len=4096, embedding_model="text-embedding-3-large"):
@@ -7,6 +8,10 @@ def get_context(query, db, k=10, max_context_len=4096, embedding_model="text-emb
     docs = db.similarity_search(query, k=k)
     law_articles_text = [doc.page_content for doc in docs]
     law_articles_sources = [doc.metadata for doc in docs]
+
+    logging.info(f"Retrieved {len(law_articles_text)} law articles")
+    logging.info(law_articles_sources[0])
+    logging.info(law_articles_text[0])
 
     context = "Relevant law articles: \n "
     for article, source in zip(law_articles_text, law_articles_sources):

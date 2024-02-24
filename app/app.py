@@ -14,6 +14,10 @@ class Query(BaseModel):
     max_context_len: int = 4096
 
 
+class Context(BaseModel):
+    context: str
+
+
 # Get the Environment variables
 _ = load_dotenv(find_dotenv())  # read local .env file
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -37,8 +41,7 @@ async def root():
     return {"message": "Hello World"}
 
 
-# Create the API route to retrieve context
-@app.post("/get_context")
+@app.post("/get_context", response_model=Context)
 def get_context_api(message: Query):
     query = message.query
     k = message.k
