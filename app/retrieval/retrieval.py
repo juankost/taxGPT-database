@@ -13,11 +13,26 @@ def get_context(query, db, k=10, max_context_len=4096, embedding_model="text-emb
     logging.info(law_articles_sources[0])
     logging.info(law_articles_text[0])
 
-    context = "Relevant law articles: \n "
+    # The metadata follows this structure:
+    # file_metadata = {
+    #     "date_parsed": pd.Timestamp.now().isoformat(),
+    #     "area_name": reference_information["area_name"],
+    #     "reference_name": reference_information["reference_name"],
+    #     "details_href_name": reference_information["details_href_name"],
+    #     "details_section": reference_information["details_section"],
+    #     "used_download_href": reference_information["used_download_href"],
+    #     "actual_download_link": reference_information["actual_download_link"],
+    # }
+
+    context = "Here is some relevant context extracted from the law: \n\n"
     for article, source in zip(law_articles_text, law_articles_sources):
-        tokens = enc.encode(context + f"{source['law']}: {article}  #### \n")
+        article_context = f"""
+        Source: {source['area_name']}/{source['reference_name']}/{source["details_section"]}: {source["details_href_name"]}\n
+        Text: {article} \n
+        """  # noqa: E501
+        tokens = enc.encode(context + article_context)
         if len(tokens) < max_context_len:
-            context += f"{source['law']}: {article}  #### \n \n"
+            context += article_context
     return context
 
 
