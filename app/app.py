@@ -20,6 +20,7 @@ class Context(BaseModel):
 
 # Get the Environment variables
 _ = load_dotenv(find_dotenv())  # read local .env file
+# _ = load_dotenv(".env.local")  # read local .env file
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Initialize the vector store
@@ -55,3 +56,14 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8080)
+
+    # # Meausure the time it takes to run the following line of code using timeit package
+    # import timeit
+
+    # def measure_time():
+    #     _ = FAISS.load_local(DB_PATH, OpenAIEmbeddings(model=os.environ["EMBEDDING_MODEL"]))
+    #     return
+
+    # # Measure the time it takes to run the code
+    # execution_time = timeit.timeit(measure_time, number=10)
+    # print(f"Execution time: {execution_time} seconds")
