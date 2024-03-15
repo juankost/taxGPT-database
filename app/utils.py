@@ -53,7 +53,9 @@ def is_url_to_file(url):
 
 
 def make_title_safe(title):
-    title = str(title).strip().replace(" ", "_").replace("(", "-").replace(")", "_").replace("/", "_")
+    title = (
+        str(title).strip().replace(" ", "_").replace("(", "-").replace(")", "_").replace("/", "_").replace("\xa0", "_")
+    )
     if not title[-1].isalnum():
         title = title[:-1]
     return title
