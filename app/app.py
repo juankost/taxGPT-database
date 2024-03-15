@@ -28,7 +28,7 @@ model = os.environ["EMBEDDING_MODEL"]
 embeddings = OpenAIEmbeddings(model=model)
 try:
     DB_PATH = os.getenv("VECTOR_DB_PATH")
-    db = FAISS.load_local(DB_PATH, embeddings)
+    db = FAISS.load_local(DB_PATH, embeddings, allow_dangerous_deserialization=True)
 except Exception as e:
     print("Error loading the database", e)
     db = None

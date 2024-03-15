@@ -10,19 +10,8 @@ def get_context(query, db, k=10, max_context_len=4096, embedding_model="text-emb
     law_articles_sources = [doc.metadata for doc in docs]
 
     logging.info(f"Retrieved {len(law_articles_text)} law articles")
-    logging.info(law_articles_sources[0])
-    logging.info(law_articles_text[0])
-
-    # The metadata follows this structure:
-    # file_metadata = {
-    #     "date_parsed": pd.Timestamp.now().isoformat(),
-    #     "area_name": reference_information["area_name"],
-    #     "reference_name": reference_information["reference_name"],
-    #     "details_href_name": reference_information["details_href_name"],
-    #     "details_section": reference_information["details_section"],
-    #     "used_download_href": reference_information["used_download_href"],
-    #     "actual_download_link": reference_information["actual_download_link"],
-    # }
+    # logging.info(law_articles_sources[0])
+    # logging.info(law_articles_text[0])
 
     context = "Here is some relevant context extracted from the law: \n\n"
     for article, source in zip(law_articles_text, law_articles_sources):
