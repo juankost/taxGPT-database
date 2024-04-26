@@ -35,5 +35,9 @@ docker run -p 80:80 gcr.io/taxgpt-413814/taxgpt-database-image:latest
 
 
 
+Work plan:
 
+- Scrape the FURS website to get a list of all the references on the website
+- If it is a file, download it 
+- If it is a website, try to download the HTML from it (i.e. PISRS,)
 

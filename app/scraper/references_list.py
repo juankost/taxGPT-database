@@ -44,6 +44,7 @@ class FURSReferencesList:
             self.references_list["is_processed"] = [False] * len(self.references_list)
             os.makedirs(self.output_dir, exist_ok=True)
             self.references_list.to_csv(self.references_data_path, index=False)
+            print("Saved to: ", self.references_data_path)
             return
         else:
             diff = self.references_list[
@@ -71,6 +72,10 @@ class FURSReferencesList:
         """
         Extracts references from the HTML content and returns a pandas DataFrame.
 
+
+        https://fu.gov.si/podrocja/ --> it crawls on this page and extracts all the links and
+        descriptions of the areas
+        
         Returns:
             pandas.DataFrame: A DataFrame containing the extracted references with columns:
                 - area_name: The name of the law area.
@@ -249,5 +254,8 @@ class FURSReferencesList:
 
 if __name__ == "__main__":
     ROOT_URL = "https://www.fu.gov.si"
-    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/tax_backend/data"
-    reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR)
+    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data"
+    reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=True)
+    reference_data.update_references()
+
+ 

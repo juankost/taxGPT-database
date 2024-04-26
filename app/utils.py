@@ -3,7 +3,13 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import sys
-
+import backoff
+from selenium.common.exceptions import WebDriverException, TimeoutException
+from playwright.sync_api import sync_playwright
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
 
@@ -28,20 +34,47 @@ def get_chrome_driver(local=False):
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
+def wait_for_app_root_or_default(driver, timeout=5, default_wait=10):
+    try:
+        # Wait for the <app-root> element to be present in the DOM
+        app_root = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.TAG_NAME, 'app-root'))
+        )
+        # Once the element is present, check if it has content
+        WebDriverWait(driver, timeout).until(
+            lambda d: app_root.get_attribute('innerHTML').strip() != ""
+        )
+    except TimeoutException:
+        # If the <app-root> element is not found or has no content within the timeout,
+        # apply the default wait
+        print("Waiting for the default period as <app-root> is not populated.")
+        driver.implicitly_wait(default_wait)
 
-def get_website_html(file_url, driver=None, close_driver=True):
+
+@backoff.on_exception(backoff.expo,
+                      (ConnectionError, WebDriverException, TimeoutException),
+                      max_tries=5, max_time=20)
+def get_website_html(file_url, driver=None, close_driver=True, wait_app_root=False):
     if driver is None:
         driver = get_chrome_driver(local=False)
     try:
         driver.get(file_url)
-        WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+        if wait_app_root:
+            wait_for_app_root_or_default(driver)
+        else:
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+
         html = driver.page_source
         soup = BeautifulSoup(html, "html.parser")
-    except Exception as e:
+    except (ConnectionError, WebDriverException, TimeoutException) as e:
         print(f"Problem getting the website html of URL : {file_url}. Error: ", e)
+        raise  # Re-raise the exception for backoff to catch
+    except Exception as e:
+        print(f"Unexpected error getting the website html of URL : {file_url}. Error: ", e)
         soup = None
-    if close_driver:
-        driver.close()
+    finally:
+        if close_driver:
+            driver.close()
     return soup
 
 
@@ -58,4 +91,58 @@ def make_title_safe(title):
     )
     if not title[-1].isalnum():
         title = title[:-1]
-    return title
+
+    return title[:100]  # Max 100 characters the length of the title
+
+
+def get_filetype(path):
+    path = str(path)
+    if path.endswith(".pdf"):
+        return "pdf"
+    elif path.endswith(".docx"):
+        return "docx"
+    elif path.endswith(".doc"):
+        return "doc"
+    elif path.endswith(".xlsx"):
+        return "xlsx"
+    elif path.endswith(".xls"):
+        return "xls"
+    elif path.endswith(".csv"):
+        return "csv"
+    elif path.endswith(".zip"):
+        return "zip"
+    elif path.endswith(".html"):
+        return "html"
+    else:
+        print(path)
+        return "unknown"
+
+
+def get_request_url_from_button_click(website_url, button_html_signature):
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+
+        request_urls = []
+        # Start capturing network requests
+        def handle_request(request):
+            print("Request made:", request.url)
+            request_urls.append(request.url)
+
+        
+        page.on("request", handle_request)
+
+        page.goto(website_url)
+        page.wait_for_selector(button_html_signature, state='attached')
+        page.click(button_html_signature)  # Selector for the PDF download button
+        page.wait_for_timeout(10000)  # Wait for 5 seconds to capture the request
+        browser.close()
+        # print(request_urls)
+
+    for url in request_urls:
+        # The format of request seems to be: https://pisrs.si/api/datoteke/integracije/36058941
+        if "api/datoteke/" in url:
+            return url            
+            print(url)
+    
+    
