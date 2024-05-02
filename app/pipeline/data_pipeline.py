@@ -3,9 +3,9 @@ import argparse
 import logging
 import openai
 from dotenv import load_dotenv, find_dotenv
-from ..scraper.references_list import FURSReferencesList
-from ..scraper.scraper import Scraper
-from ..storage.storage_bucket import (
+from app.scraper.references_list import FURSReferencesList
+from app.scraper.scraper import Scraper
+from app.storage.storage_bucket import (
     download_blob,
     download_folder,
     upload_blob,
@@ -13,11 +13,13 @@ from ..storage.storage_bucket import (
     check_blob_exists,
     check_folder_exists,
 )
-from ..database.vector_store import VectorStore
-from ..parser.text_parser import Parser
+from app.database.vector_store import VectorStore
+from app.parser.text_parser import FileProcessor, TextProcessor
 
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 def load_database(local=False):
@@ -26,11 +28,13 @@ def load_database(local=False):
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
     STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
 
-    # If the storage bucket does not contain the database, then we need to call the update_database function
+    # If the storage bucket does not contain the database, then we need to call the update_database
+    # function
     if (
         STORAGE_BUCKET_NAME is None
         or not check_folder_exists(STORAGE_BUCKET_NAME, "vector_database", local=local)
         or not check_blob_exists(STORAGE_BUCKET_NAME, "references.csv", local=local)
+        or not check_blob_exists(STORAGE_BUCKET_NAME, "downloaded_data_index.csv", local=local)
     ):
         logging.info("Database not found in the storage bucket. Updating the database.")
         update_database(local=local)
@@ -39,7 +43,18 @@ def load_database(local=False):
 
         os.makedirs(METADATA_DIR, exist_ok=True)
         os.makedirs(VECTOR_DB_PATH, exist_ok=True)
-        download_blob(STORAGE_BUCKET_NAME, "references.csv", os.path.join(METADATA_DIR, "references.csv"), local=local)
+        download_blob(
+            STORAGE_BUCKET_NAME,
+            "references.csv",
+            os.path.join(METADATA_DIR, "references.csv"),
+            local=local,
+        )
+        download_blob(
+            STORAGE_BUCKET_NAME,
+            "references.csv",
+            os.path.join(METADATA_DIR, "downloaded_data_index.csv"),
+            local=local,
+        )
         download_folder(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
 
@@ -48,8 +63,8 @@ def update_database(local=False):
     ROOT_URL = os.getenv("ROOT_URL")
     METADATA_DIR = os.getenv("METADATA_DIR")
     RAW_DATA_DIR = os.getenv("RAW_DATA_DIR")
-    PARSED_DATA_DIR = os.getenv("PARSED_DATA_DIR")
-    PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
+    CONVERTED_DATA_DIR = os.getenv("CONVERTED_DATA_DIR")
+    FILE_CHUNKS_DATA_DIR = os.getenv("FILE_CHUNKS_DATA_DIR")
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
     STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
@@ -57,11 +72,16 @@ def update_database(local=False):
 
     logging.info("Updating the database")
 
-    # 1. Load the backup if it exists - we only load the references.csv file if the vector database exists
-    if STORAGE_BUCKET_NAME is not None and check_folder_exists(STORAGE_BUCKET_NAME, "vector_database", local=local):
+    # 1. Load the backup if it exists - we only load the DB if the vector database exists
+    if STORAGE_BUCKET_NAME is not None and check_folder_exists(
+        STORAGE_BUCKET_NAME, "vector_database", local=local
+    ):
         os.makedirs(METADATA_DIR, exist_ok=True)
         os.makedirs(VECTOR_DB_PATH, exist_ok=True)
         download_blob(STORAGE_BUCKET_NAME, "references.csv", reference_data_path, local=local)
+        download_blob(
+            STORAGE_BUCKET_NAME, "downloaded_data_index.csv", reference_data_path, local=local
+        )
         download_folder(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
     # 2. Update the raw sources list; returns the dataframe containing the new references to scrape
@@ -76,12 +96,16 @@ def update_database(local=False):
 
     # 4. Parse the raw data
     logging.info("Parsing the raw data")
-    parser = Parser(reference_data_path, RAW_DATA_DIR, PARSED_DATA_DIR, local=local, embedding_model=EMBEDDING_MODEL)
-    parser.parse_all_files()
+    file_processor = FileProcessor(CONVERTED_DATA_DIR, METADATA_DIR)
+    file_processor.convert_all_files()
+    text_processor = TextProcessor(METADATA_DIR, CONVERTED_DATA_DIR, FILE_CHUNKS_DATA_DIR)
+    text_processor.chunk_all_files()
 
     # 5. Add the processed data to the vector database
     logging.info("Adding the processed data to the vector database")
-    vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH, embedding_model=EMBEDDING_MODEL)
+    vector_store = VectorStore(
+        METADATA_DIR, FILE_CHUNKS_DATA_DIR, VECTOR_DB_PATH, embedding_model=EMBEDDING_MODEL
+    )
     vector_store.update_or_create_vector_store()
 
     # 6. Backup the updated vector store to the storage bucket
@@ -89,14 +113,27 @@ def update_database(local=False):
         logging.info("Uploading vector database to the storage bucket")
         upload_folder_to_bucket(STORAGE_BUCKET_NAME, VECTOR_DB_PATH, "vector_database", local=local)
         logging.info(f"Uploading references.csv to the storage bucket {STORAGE_BUCKET_NAME}")
-        upload_blob(STORAGE_BUCKET_NAME, os.path.join(METADATA_DIR, "references.csv"), "references.csv", local=local)
+        upload_blob(
+            STORAGE_BUCKET_NAME,
+            os.path.join(METADATA_DIR, "references.csv"),
+            "references.csv",
+            local=local,
+        )
+        upload_blob(
+            STORAGE_BUCKET_NAME,
+            os.path.join(METADATA_DIR, "references.csv"),
+            "downloaded_data_index.csv",
+            local=local,
+        )
 
 
 def main():
     # Pass a command line argument that decides if we simply load or update the database
     parser = argparse.ArgumentParser(description="Update or load the database")
     parser.add_argument("--update", action="store_true", help="Update the database")
-    parser.add_argument("--local", action="store_true", help="For running on local machine. Debugging purposes.")
+    parser.add_argument(
+        "--local", action="store_true", help="For running on local machine. Debugging purposes."
+    )
     args = parser.parse_args()
 
     logging.info("Loading the environment variables")

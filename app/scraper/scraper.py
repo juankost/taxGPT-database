@@ -1,12 +1,6 @@
-"""
-This script crawls the fu.gov.si website and extracts all the references denoted there that cover most of the
-areas of tax laws.
-"""
 import os
 import logging
 import pandas as pd
-import wget
-import uuid
 import tqdm
 import requests
 import backoff
@@ -14,9 +8,29 @@ import datetime
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 from urllib.parse import urljoin
-from app.utils import get_website_html, is_url_to_file, make_title_safe, get_chrome_driver, get_filetype  # noqa: E402
+from app.utils import (
+    get_website_html,
+    is_url_to_file,
+    make_title_safe,
+    get_chrome_driver,
+    get_filetype,
+)  # noqa: E402
 
-FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
+FILE_EXTENSIONS = [
+    "docx",
+    "doc",
+    "pdf",
+    "zip",
+    "xlsx",
+    "xls",
+    "ppt",
+    "pptx",
+    "csv",
+    "txt",
+    "rtf",
+    "odt",
+    "ods",
+]
 DOWNLOADED_DATA_SCHEMA = [
     "file_id",
     "filename",
@@ -28,7 +42,9 @@ DOWNLOADED_DATA_SCHEMA = [
     "raw_filepath",
     "processed_filepath",
     "downloaded_path",
-    "file_summary"
+    "file_summary",
+    "file_chunks_path",
+    "in_vector_db",
 ]
 PISRS_DOWNLOAD_BASE_URL = "https://pisrs.si/api/datoteke/integracije/"
 PISRS_METADATA_BASE_URL = "https://pisrs.si/api/rezultat/zbirka/id/"
@@ -41,11 +57,11 @@ logging.basicConfig(level=logging.INFO)
 @backoff.on_exception(backoff.expo, ConnectionError, max_tries=10, max_time=20)
 def _download_file(url_link, save_path):
     headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"  # noqa E501
     }
-    response = requests.get(url_link, headers=headers, timeout=20) # stream=True, 
-    with open(save_path, 'wb') as f:
-        for chunk in response.iter_content(chunk_size=1024): 
+    response = requests.get(url_link, headers=headers, timeout=20)  # stream=True,
+    with open(save_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=1024):
             if chunk:
                 f.write(chunk)
     print("Downloaded file")
@@ -55,7 +71,7 @@ class Scraper:
     def __init__(self, references_data_path, output_dir, local=False):
         self.driver = get_chrome_driver(local=local)
         self.references_data_path = references_data_path
-        self.metadata_dir = os.path.dirname(references_data_path)  
+        self.metadata_dir = os.path.dirname(references_data_path)
         self.references_data = pd.read_csv(references_data_path)
         self.output_dir = output_dir
         self.already_downloaded_clean_links = []
@@ -64,8 +80,13 @@ class Scraper:
         os.makedirs(output_dir, exist_ok=True)
 
         # If references_data is new it might not have all the columns
-        cols_to_add = ["used_download_href", "actual_download_link",
-                       "actual_download_location", "is_processed", "date_downloaded"]
+        cols_to_add = [
+            "used_download_href",
+            "actual_download_link",
+            "actual_download_location",
+            "is_scraped",
+            "date_downloaded",
+        ]
         for col in cols_to_add:
             if col not in self.references_data.columns:
                 self.references_data[col] = [None] * len(self.references_data)
@@ -89,17 +110,19 @@ class Scraper:
         for idx, row in tqdm.tqdm(self.references_data.iterrows()):
 
             # Ignore if it was already processed
-            if row["is_processed"] == True or row["is_processed"] == 'True':
+            if row["is_scraped"] == "True" or (
+                isinstance(row["is_scraped"], bool) and row["is_scraped"]
+            ):
                 continue
- 
-            # Skip the ones where the 
+
+            # Skip the ones where the
             reference_href_clean = str(row["reference_href_clean"]).split("#")[0]
             details_href_clean = str(row["details_href"]).split("#")[0]
 
             # The order is important.
-            # First try to download the details href, and if that is nan, then download the reference href
+            # First try to download the details href, and if that is nan, then download the
+            # reference href
             if is_url_to_file(details_href_clean):
-                # print("File: ", details_href_clean)
                 self.download_file(
                     details_href_clean,
                     row["details_href_name"],
@@ -107,7 +130,6 @@ class Scraper:
                     idx_to_download_info,
                 )
             elif details_href_clean != "nan":
-                # print("Website: ", details_href_clean)
                 self.download_website(
                     details_href_clean,
                     row["details_href_name"],
@@ -115,7 +137,6 @@ class Scraper:
                     idx_to_download_info,
                 )
             elif is_url_to_file(reference_href_clean):
-                # print("File: ", reference_href_clean)
                 self.download_file(
                     reference_href_clean,
                     row["reference_name"],
@@ -123,29 +144,16 @@ class Scraper:
                     idx_to_download_info,
                 )
             else:
-                # print("Website: ", reference_href_clean)
                 self.download_website(
                     reference_href_clean,
                     row["reference_name"],
                     idx,
                     idx_to_download_info,
                 )
-            # Update the references_data at every step --> makes it easier to resume
-
-        # Update the references_data DataFrame
-        for idx, (url_link, actual_download_link, actual_download_location) in idx_to_download_info.items():
-            self.references_data.at[idx, "used_download_href"] = url_link
-            self.references_data.at[idx, "actual_download_link"] = actual_download_link
-            self.references_data.at[idx, "actual_download_location"] = actual_download_location
-            self.references_data.at[idx, "data_downloaded"] = datetime.datetime.now().date()
-            if actual_download_location is not None:  # in some cases it doesn't find the download link
-                self.references_data.at[idx, "is_processed"] = True
-        self.references_data.to_csv(self.references_data_path, index=False)
-
         # Create a clean dataset for all the downloaded data
-        self.create_downloaded_data_index()
+        self.update_downloaded_data_index()
         return self.references_data
-    
+
     def download_file(self, url_link, title, idx, idx_to_download_info):
         """
         Downloads a file from a given URL link and saves it to the output directory.
@@ -160,7 +168,9 @@ class Scraper:
             None
         """
         if url_link in self.already_downloaded_clean_links:
-            actual_download_link_and_paths = [item[1:] for item in idx_to_download_info.values() if item[0] == url_link]
+            actual_download_link_and_paths = [
+                item[1:] for item in idx_to_download_info.values() if item[0] == url_link
+            ]
             idx_to_download_info[idx] = (url_link, *actual_download_link_and_paths[0])
             self.update_references_data(idx, url_link, *actual_download_link_and_paths[0])
             return
@@ -189,7 +199,9 @@ class Scraper:
 
     def download_website(self, url_link, title, idx, idx_to_download_info):
         if url_link in self.already_downloaded_clean_links:
-            actual_download_link_and_paths = [item[1:] for item in idx_to_download_info.values() if item[0] == url_link]
+            actual_download_link_and_paths = [
+                item[1:] for item in idx_to_download_info.values() if item[0] == url_link
+            ]
             idx_to_download_info[idx] = (url_link, *actual_download_link_and_paths[0])
             self.update_references_data(idx, url_link, *actual_download_link_and_paths[0])
             return
@@ -227,18 +239,21 @@ class Scraper:
             self.references_data.at[idx, "used_download_href"] = url_link
             self.references_data.at[idx, "actual_download_link"] = actual_download_link
             self.references_data.at[idx, "actual_download_location"] = actual_download_location
-        self.references_data.at[idx, "is_processed"] = True
+            self.references_data.at[idx, "data_downloaded"] = datetime.datetime.now().date()
+        self.references_data.at[idx, "is_scraped"] = True
         self.references_data.to_csv(self.references_data_path, index=False)
 
-    def create_downloaded_data_index(self):
-        
+    def create_downloaded_data_index(self, data):
+
         new_data = []
-        downloaded_data = self.references_data[self.references_data["actual_download_location"].isna() == False]
-        downloaded_data = downloaded_data[downloaded_data["actual_download_link"].isna() == False]
+        downloaded_data = data[data["actual_download_location"].isna() == False]  # noqa E501, E712
+        downloaded_data = downloaded_data[
+            downloaded_data["actual_download_link"].isna() == False  # noqa E501, E712
+        ]  # noqa E501, E712
         downloaded_data = downloaded_data.where(pd.notnull(downloaded_data), None)
 
         for _, row in downloaded_data.iterrows():
-            file_id = uuid.uuid4()
+            file_id = row["file_id"]  # uuid.uuid4()
             href_name = self._get_downladed_file_filename(row)
             area = row["area_name"]
             subarea = row["reference_name"]
@@ -247,15 +262,46 @@ class Scraper:
             file_type = get_filetype(row["actual_download_location"])
             raw_url_link = row["actual_download_link"]
             raw_filepath = row["actual_download_location"]
-            new_data.append([file_id, href_name, date_downloaded, area, subarea, section, file_type,
-                             raw_url_link, None, raw_filepath, None])
+            new_data.append(
+                [
+                    file_id,
+                    href_name,
+                    date_downloaded,
+                    area,
+                    subarea,
+                    section,
+                    file_type,
+                    raw_url_link,
+                    None,
+                    raw_filepath,
+                    None,  # file_summary
+                    None,  # file_chunks_path
+                    None,  # in_vector_db
+                ]
+            )
         clean_df = pd.DataFrame(new_data, columns=DOWNLOADED_DATA_SCHEMA)
-        clean_df["file_type"].value_counts()
-        clean_df.to_csv(os.path.join(self.metadata_dir, "downloaded_data_index.csv"), index=False)
         return clean_df
 
+    def update_downloaded_data_index(self):
+        # If the file does not exist, create it
+        if not os.path.exists(os.path.join(self.metadata_dir, "downloaded_data_index.csv")):
+            downloaded_data_index = self.create_downloaded_data_index()
+        else:
+            downloaded_data_index = pd.read_csv(
+                os.path.join(self.metadata_dir, "downloaded_data_index.csv")
+            )
+            new_data = self.references_data[
+                ~self.references_data["file_id"].isin(self.downloaded_data_index["file_id"])
+            ]
+            new_downloaded_data_index = self.create_downloaded_data_index(new_data)
+            downloaded_data_index = pd.concat([downloaded_data_index, new_downloaded_data_index])
+
+        downloaded_data_index.to_csv(
+            os.path.join(self.metadata_dir, "downloaded_data_index.csv"), index=False
+        )
+
     def _get_downladed_file_filename(self, row):
-        
+
         if row["details_href"] is not None:
             if row["details_href_name"] is not None:
                 return row["details_href_name"]
@@ -269,7 +315,7 @@ class Scraper:
                 return os.path.basename(urlparse(row["reference_href_clean"]).path)
         else:
             return None
-    
+
 
 class ScrapePISRS(Scraper):
     @staticmethod
@@ -313,7 +359,10 @@ class ScrapePISRS(Scraper):
 
             return download_url, save_path
         else:
-            print(f"Could not find PISRS file: {make_title_safe(resource_title)} from website {url_link}")
+            print(
+                f"Could not find PISRS file: {make_title_safe(resource_title)} "
+                f"from website {url_link}"
+            )
             return None, None
 
     @classmethod
@@ -333,10 +382,12 @@ class ScrapePISRS(Scraper):
     @classmethod
     def get_resource_id(cls, website_url, driver):
         if "id=" in website_url:
-            id_and_maybe_other_attrs =  website_url.split("id=")[1]
+            id_and_maybe_other_attrs = website_url.split("id=")[1]
             return id_and_maybe_other_attrs.split("&")[0]
         else:
-            soup = get_website_html(website_url, driver=driver, close_driver=False, wait_app_root=True)
+            soup = get_website_html(
+                website_url, driver=driver, close_driver=False, wait_app_root=True
+            )
             div_element = soup.find("div", attrs={"data-test": "evidencni-card-zunanji-id"})
             if div_element:
                 return div_element.text.split(":")[1].strip()
@@ -346,8 +397,6 @@ class ScrapePISRS(Scraper):
     @classmethod
     def get_resource_title(cls, website_url, driver):
         soup = get_website_html(website_url, driver=driver, close_driver=False)
-        # div_element should extract an html element that matches the following:
-        # <h1 _ngcontent-serverapp-c444="" data-test="evidencni-card-title" class="main-text">Zakon o dohodnini (ZDoh-2)</h1>
         div_element = soup.find("h1", data_test="evidencni-card-title")
         if div_element:
             return div_element.text.strip()
@@ -358,12 +407,14 @@ class ScrapePISRS(Scraper):
     def get_download_url_and_title(cls, resource_id):
         metadata_url = PISRS_METADATA_BASE_URL + resource_id
         try:
-        
+
             response = requests.get(metadata_url)
             if response.status_code == 200:
                 data = response.json()
-                # Get the resource title           
-                resource_title = data.get("data", {}).get("evidencniPodatki", {}).get("naslov", None)
+                # Get the resource title
+                resource_title = (
+                    data.get("data", {}).get("evidencniPodatki", {}).get("naslov", None)
+                )
 
                 # Get the downlload URL for the HTML file
                 download_id = None
@@ -373,16 +424,18 @@ class ScrapePISRS(Scraper):
                     version = resource_version_data.get("npbVerzija", {}).get("naziv", None)
                     if version is not None:
                         if max_version == 0 and "osnovni" in version.lower():
-                            resource_version_files = resource_version_data.get("datoteke", [])                
+                            resource_version_files = resource_version_data.get("datoteke", [])
                             for file in resource_version_files:
                                 if file.get("tip") in ["HTML_DOCUMENT"]:  # PDF_DOCUMENT
-                                    download_id = file.get("id")                        
+                                    download_id = file.get("id")
                         else:
                             version = version.split(" ")[-1]
                             if version.isdigit():
                                 version = int(version)
                                 if version > max_version:
-                                    resource_version_files = resource_version_data.get("datoteke", [])                
+                                    resource_version_files = resource_version_data.get(
+                                        "datoteke", []
+                                    )
                                     for file in resource_version_files:
                                         if file.get("tip") in ["HTML_DOCUMENT"]:  # PDF_DOCUMENT
                                             download_id = file.get("id")
@@ -392,7 +445,7 @@ class ScrapePISRS(Scraper):
                     return download_url, resource_title
                 else:
                     print("No suitable file type found for download.")
-                    return None, None            
+                    return None, None
             else:
                 print(f"Failed to get metadata for PISRS doc, status code: {response.status_code}")
                 return None, None
@@ -400,8 +453,10 @@ class ScrapePISRS(Scraper):
             print(f"An error occurred requesting the PISRS metadata: {e}")
             return None, None
 
+
 class ScrapeEURLex(Scraper):
-    """Class derived from Scraper to scrape the EUR-Lex website. Implements the download_custom_website method.
+    """Class derived from Scraper to scrape the EUR-Lex website.
+    Implements the download_custom_website method.
 
     Returns:
         pdr_url_link: the actual URL link used to download the resource. None, if not available
@@ -415,23 +470,27 @@ class ScrapeEURLex(Scraper):
 
         Args:
             website_url (str): The URL of the website to download.
-            title (str): The title of the website. (not used. Kept for compatibility with parent class)
+            title (str): The title of the website. (not used. Kept for compatibility with parent class) # noqa E501
             output_dir (str): The directory where the downloaded PDF file will be saved.
             driver (WebDriver, optional): The web driver to use for scraping. Defaults to None.
 
         Returns:
-            tuple: A tuple containing the URL of the downloaded PDF file and the path where it is saved.
+            tuple: A tuple containing the URL of the downloaded PDF file and the path where it is saved. # noqa E501
                     If the website cannot be downloaded, returns (None, None).
         """
 
         # Teh URL generally follows the following pattern:
-        # https://eur-lex.europa.eu/legal-content/EN/TXT/{PDF, HTML}/?uri=CELEX%3A32023D2879&qid=1706091644527
+        # https://eur-lex.europa.eu/legal-content/EN/TXT/{PDF, HTML}/?uri=CELEX%3A32023D2879&qid=1706091644527 # noqa E501
         # Ensure we load the website, and not the files of the law (i.e. HTML/PDF files)
         try:
             website_url = website_url.replace("/TXT/HTML/", "/TXT/").replace("/TXT/PDF/", "/TXT/")
             soup = get_website_html(website_url, driver=driver, close_driver=False)
         except Exception as e:
-            print("Could not get the HTML of the reference_href website with URL: {website_url}\n", "Error: ", e)
+            print(
+                "Could not get the HTML of the reference_href website with URL: {website_url}\n",
+                "Error: ",
+                e,
+            )
             return None, None
 
         # logging.info(f"Got the HTML of the website {website_url}")
@@ -441,12 +500,16 @@ class ScrapeEURLex(Scraper):
             is_valid, html_validity_indicator = ScrapeEURLex.check_law_validity(soup)
             if is_valid == "Unknown":
                 return None, None
-        except:
-            print("Could not check the validity of the law with URL: ", website_url)
+        except Exception as e:
+            print(
+                "Could not check the validity of the law with URL: ", website_url, f"\n Error: {e}"
+            )
             return None, None
 
         # Get the latest valid law
-        latest_valid_url = ScrapeEURLex.get_latest_valid_url(html_validity_indicator, is_valid, website_url)
+        latest_valid_url = ScrapeEURLex.get_latest_valid_url(
+            html_validity_indicator, is_valid, website_url
+        )
         if latest_valid_url is None:
             return None, None
 
@@ -457,7 +520,8 @@ class ScrapeEURLex(Scraper):
                 soup_latest = soup
         except Exception as e:
             print(
-                "Could not get the HTML of the latest version of the" f" law with URL: {latest_valid_url}\n",
+                "Could not get the HTML of the latest version of the"
+                f" law with URL: {latest_valid_url}\n",
                 "Error: ",
                 e,
             )
@@ -517,10 +581,14 @@ class ScrapeEURLex(Scraper):
 
         law_valid_condition = any([flag in is_valid_flag for flag in IS_VALID_FLAG_VALUE])
         law_not_valid_condition = any([flag in is_valid_flag for flag in IS_NOT_VALID_FLAG_VALUE])
-        assert law_valid_condition or law_not_valid_condition, "The validity flag is netiehr valid nor invalid"
+        assert (
+            law_valid_condition or law_not_valid_condition
+        ), "The validity flag is netiehr valid nor invalid"
 
         law_modified_condition = any([msg in is_valid_desc for msg in LAW_WAS_CHANGED_MSG])
-        law_not_in_force_condition = any([msg in is_valid_desc for msg in LAW_NO_LONGER_IN_FORCE_MSG])
+        law_not_in_force_condition = any(
+            [msg in is_valid_desc for msg in LAW_NO_LONGER_IN_FORCE_MSG]
+        )
         law_in_force_condition = any([msg in is_valid_desc for msg in LAW_IN_FORCE_MSG])
         assert (
             law_modified_condition or law_not_in_force_condition or law_in_force_condition
@@ -535,7 +603,10 @@ class ScrapeEURLex(Scraper):
         elif law_not_valid_condition and law_not_in_force_condition:
             return "Invalid Version", html_is_valid_ind
         else:
-            raise ValueError("Could not determine status of the law based on the following description:", is_valid_desc)
+            raise ValueError(
+                "Could not determine status of the law based on the following description:",
+                is_valid_desc,
+            )
 
     @staticmethod
     def get_latest_valid_url(html_is_valid_ind, is_valid, website_url):
@@ -543,7 +614,7 @@ class ScrapeEURLex(Scraper):
         Returns the URL of the latest or replaced law based on the validity status.
 
         Args:
-            html_is_valid_ind (BeautifulSoup): The BeautifulSoup object representing the HTML of the validity indicator.
+            html_is_valid_ind (BeautifulSoup): The BeautifulSoup object representing the HTML of the validity indicator. # noqa E501
             is_valid (str): The validity status of the law.
             website_url (str): The URL of the website.
 
@@ -563,7 +634,10 @@ class ScrapeEURLex(Scraper):
         elif is_valid == "Invalid Version":
             return None
         else:
-            print("Could not find the URL of the latest or replaced law based on the validity status:", is_valid)
+            print(
+                "Could not find the URL of the latest or replaced law based on the validity status:",  # noqa E501
+                is_valid,
+            )
             return None
 
     @staticmethod
@@ -595,19 +669,15 @@ class ScrapeEURLex(Scraper):
             doc_title = doc_title.text
         return doc_title
 
-
-
-
-
     @staticmethod
     def download_custom_website(website_url, title, output_dir, driver=None):
         # Teh URL generally follows the following pattern:
-        # https://eur-lex.europa.eu/legal-content/EN/TXT/{PDF, HTML}/?uri=CELEX%3A32023D2879&qid=1706091644527
+        # https://eur-lex.europa.eu/legal-content/EN/TXT/{PDF, HTML}/?uri=CELEX%3A32023D2879&qid=17
         # Ensure we load the website, and not the files of the law (i.e. HTML/PDF files)
 
         # Handle if it is already a file (from the LEXSERV...)
         if "lexuriserv" in website_url.lower():
-            # e.g. http://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=CELEX:21987A0813(01):SL:HTML
+            # e.g.http://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=CELEX:21987A0813(01):SL:HTML
             resource_title = website_url.split("uri=")[-1]
             if "pdf" in resource_title.lower():
                 save_path = os.path.join(output_dir, f"{make_title_safe(resource_title)}.pdf")
@@ -623,12 +693,15 @@ class ScrapeEURLex(Scraper):
                     return None, None
             return website_url, save_path
 
-
         try:
             website_url = website_url.replace("/TXT/HTML/", "/TXT/").replace("/TXT/PDF/", "/TXT/")
             soup = get_website_html(website_url, driver=driver, close_driver=False)
         except Exception as e:
-            print("Could not get the HTML of the reference_href website with URL: {website_url}\n", "Error: ", e)
+            print(
+                "Could not get the HTML of the reference_href website with URL: {website_url}\n",
+                "Error: ",
+                e,
+            )
             return None, None
 
         # If it is a search result, extract the first result
@@ -641,7 +714,10 @@ class ScrapeEURLex(Scraper):
             else:
                 soup = get_website_html(website_url, driver=driver, close_driver=False)
                 if soup is None:
-                    print("Could not get the HTML of the reference_href website with URL: {website_url}\n", "Error: ", e)
+                    print(
+                        "Could not get the HTML of the reference_href website with URL: "
+                        f"{website_url}\n",
+                    )
                     return None, None
 
         # Check validity
@@ -651,7 +727,9 @@ class ScrapeEURLex(Scraper):
             return None, None
 
         # Get latest version of teh HTML of the website
-        latest_valid_url = ScrapeEURLex.get_latest_resource_version(website_url, soup, is_valid_text)
+        latest_valid_url = ScrapeEURLex.get_latest_resource_version(
+            website_url, soup, is_valid_text
+        )
         if latest_valid_url == website_url and not is_valid:
             print("The resource is not valid. URL: ", website_url)
             return None, None
@@ -678,15 +756,18 @@ class ScrapeEURLex(Scraper):
                     return None, None
             return download_url, save_path
         else:
-            print(f"Could not find EURLEX file: {make_title_safe(resource_title)} from website {website_url}")
+            print(
+                f"Could not find EURLEX file: {make_title_safe(resource_title)} from website "
+                f"{website_url}"
+            )
             return None, None
 
     @classmethod
     def check_resource_valid(cls, soup):
         # Extract the src attribute of the img element within the forceIndicator class
         force_indicator = soup.find("p", class_="forceIndicator")
-        if force_indicator: 
-            force_indicator_text = soup.find("p", class_="forceIndicator").text.strip()    
+        if force_indicator:
+            force_indicator_text = soup.find("p", class_="forceIndicator").text.strip()
             img_src = force_indicator.find("img", class_="forceIndicatorBullet").get("src", "")
             # Check if the src attribute contains 'green-on.png' to determine validity
             if "green" in img_src:
@@ -711,11 +792,13 @@ class ScrapeEURLex(Scraper):
                 if latest_version:
                     href = latest_version.find("a").get("href", None)
         else:
-            print(f"EURLEX website does not have the accessCurrent and no list of resource versions."
-                  f"Website: {website_url}, Is valid descriptor: ", is_valid_text)
+            print(
+                f"EURLEX website does not have the accessCurrent and no list of resource versions."
+                f"Website: {website_url}, Is valid descriptor: ",
+                is_valid_text,
+            )
 
         if href is not None:
-            # update the URL based on the relative path of href with respect to the current webiste_url
             if href.startswith("http"):
                 return href
             else:
@@ -733,7 +816,7 @@ class ScrapeEURLex(Scraper):
             resource_id = celex_and_potentially_other_attrs.split("CELEX:")[-1]
         else:
             title = ScrapeEURLex.get_resource_title(website_url, soup)
-            # Extract the CELEX from the title 
+            # Extract the CELEX from the title
             # Title format: Dokument&nbsp;02011R0282-20150101
             resource_id = title.split("&nbsp;")[-1]
         return resource_id
@@ -751,7 +834,7 @@ class ScrapeEURLex(Scraper):
     def get_download_url(cls, resource_id):
         # Use the URL structure to try to download the HTML version of the file
         return EURLEX_DOWNLOAD_BASE_URL + f"{resource_id.strip()}"
-    
+
     @classmethod
     def get_first_search_result(cls, website_url, soup):
         div_element = soup.find("div", class_="SearchResult")  # Finds the first results
@@ -765,26 +848,11 @@ class ScrapeEURLex(Scraper):
             return None
 
 
-
-# Get EURLEX data based on CELEX and URL structure
-
-# Format for files: https://eur-lex.europa.eu/legal-content/SL/TXT/HTML/?uri=CELEX:32022L2523
-
-# How to better download EUR-LEX data: 
-# 1. Check if latest version. If not, open latest version [ DONE ]
-# 2. Extract the CELEX from the document
-#   - if available from the URL
-#   - if not, from the document title HTML element <p class="DocumentTitle pull-left">Dokument&nbsp;32022L2523</p>
-# 3. Use the URL structure to try to download the HTML version of the file
-# 4. If not available, try downloading the PDF version
-
-
-
-
 class ScrapeUradniList(Scraper):
     @staticmethod
     def download_custom_website(website_url, title, output_dir, driver=None):
         return None, None
+
 
 class ScrapeGOVsi(Scraper):
     @staticmethod
@@ -800,8 +868,9 @@ if __name__ == "__main__":
     METADATA_DIR = os.getenv("METADATA_DIR")
     RAW_DATA_DIR = os.getenv("RAW_DATA_DIR")
 
-    # Test the full scraper from start to finish    
+    # Test the full scraper from start to finish
     from app.scraper.references_list import FURSReferencesList
+
     ROOT_URL = "https://www.fu.gov.si"
     METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data"
     reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=True)
@@ -811,17 +880,16 @@ if __name__ == "__main__":
     scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=True)
     scraper.download_all_references()
 
-
-    # Test why the scraper did not manage to download the following file, while I managed to download
+    # Test why the scraper did not manage to download the following file, while I managed to download # noqa E501
     # it before
-    # file_url = "https://eur-lex.europa.eu/legal-content/SL/TXT/?uri=CELEX:32022R1467&qid=1672324949047&from=en"
+    # file_url = "https://eur-lex.europa.eu/legal-content/SL/TXT/?uri=CELEX:32022R1467&qid=1672324949047&from=en" # noqa E501
     # driver = get_chrome_driver(local=True)
-    # RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_0419/raw_data"
+    # RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_0419/raw_data" # noqa E501
     # ScrapeEURLex.download_custom_website(file_url, None, RAW_DATA_DIR, driver)
 
-    # file_url = "https://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=OJ:C:2013:105:0001:0006:SL:PDF"
+    # file_url = "https://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=OJ:C:2013:105:0001:0006:SL:PDF" # noqa E501
     # file_url = "https://eur-lex.europa.eu/legal-content/SL/TXT/?uri=CELEX%3A02011R0282-20150101"
-    # file_url = "http://eur-lex.europa.eu/search.html?DTN=0952&DTA=2013&qid=1468324554259&DB_TYPE_OF_ACT=regulation&CASE_LAW_SUMMARY=false&DTS_DOM=ALL&excConsLeg=true&typeOfActStatus=REGULATION&type=advanced&SUBDOM_INIT=ALL_ALL&DTS_SUBDOM=ALL_ALL"
+    # file_url = "http://eur-lex.europa.eu/search.html?DTN=0952&DTA=2013&qid=1468324554259&DB_TYPE_OF_ACT=regulation&CASE_LA _SUMMARY=false&DTS_DOM=ALL&excConsLeg=true&typeOfActStatus=REGULATION&type=advanced&SUBDOM_INIT=ALL_ALL&DTS_SUBDOM=ALL_ALL" # noqa E501
     # file_url = "https://eur-lex.europa.eu/legal-content/SL/TXT/?uri=CELEX:02014R0651-20230701"
     # driver = get_chrome_driver(local=True)
     # RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/testing/"
@@ -832,5 +900,3 @@ if __name__ == "__main__":
     #     print(ScrapeEURLex.download_custom_website(file_url, None, RAW_DATA_DIR, driver))
 
     # Test if it now download it correctlz
-
-

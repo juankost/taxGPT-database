@@ -1,12 +1,9 @@
-"""
-This script crawls the fu.gov.si website and extracts all the references denoted there that cover most of the
-areas of tax laws.
-"""
 import os
 import pandas as pd
 import logging
+import uuid
 import tqdm
-from ..utils import get_website_html, is_url_to_file, get_chrome_driver
+from app.utils import get_website_html, is_url_to_file, get_chrome_driver
 
 
 class FURSReferencesList:
@@ -18,7 +15,9 @@ class FURSReferencesList:
         self.references_data_path = os.path.join(self.output_dir, "references.csv")
 
         logging.info("Getting the HTML of the overview page")
-        self.overview_page_soup = get_website_html(self.furs_overview_url, driver=self.driver, close_driver=False)
+        self.overview_page_soup = get_website_html(
+            self.furs_overview_url, driver=self.driver, close_driver=False
+        )
 
     def update_references(self):
         logging.info("Starring the references update process")
@@ -36,22 +35,29 @@ class FURSReferencesList:
 
     def compare_references_to_backup(self):
         """
-        Compares the references in the current `references_list` DataFrame to the backup references list.
-        Adds flag to show if reference is new or not.
+        Compares the references in the current `references_list` DataFrame to the backup
+        references list. Adds flag to show if reference is new or not.
         Saves the updated references list to the `references_data_path`.
         """
         if self.backup_references_list is None:
-            self.references_list["is_processed"] = [False] * len(self.references_list)
+            self.references_list["is_scraped"] = [False] * len(self.references_list)
+            # Create file_id
+            self.references_list["file_id"] = [
+                uuid.uuid4() for _ in range(len(self.references_list))
+            ]
             os.makedirs(self.output_dir, exist_ok=True)
             self.references_list.to_csv(self.references_data_path, index=False)
             print("Saved to: ", self.references_data_path)
             return
         else:
             diff = self.references_list[
-                ~self.references_list.reference_href.isin(self.backup_references_list.reference_href)
+                ~self.references_list.reference_href.isin(
+                    self.backup_references_list.reference_href
+                )
             ]
             diff = diff[~diff.details_href.isin(self.backup_references_list.details_href)]
-            diff["is_processed"] = [False] * len(diff)
+            diff["is_scraped"] = [False] * len(diff)
+            diff["file_id"] = [uuid.uuid4() for _ in range(len(diff))]
             union = pd.concat([self.backup_references_list, diff], axis=0)
             os.makedirs(self.output_dir, exist_ok=True)
             union.to_csv(self.references_data_path, index=False)
@@ -60,7 +66,9 @@ class FURSReferencesList:
     def scrape_references(self, save=True):
         logging.info("Scraping the references")
         self.references_list = self.extract_references()
-        logging.info("Extracted main references. Extracting further references from the linked websites.")
+        logging.info(
+            "Extracted main references. Extracting further references from the linked websites."
+        )
         self.extract_further_references()
         if save:
             logging.info("Saving the references list to the output directory")
@@ -75,7 +83,7 @@ class FURSReferencesList:
 
         https://fu.gov.si/podrocja/ --> it crawls on this page and extracts all the links and
         descriptions of the areas
-        
+
         Returns:
             pandas.DataFrame: A DataFrame containing the extracted references with columns:
                 - area_name: The name of the law area.
@@ -160,8 +168,8 @@ class FURSReferencesList:
         website_links (list): A list of website links.
 
         Returns:
-        tuple: A tuple containing three lists - typical_website_links, file_links, and other_websites.
-               typical_website_links: List of website links that are considered typical (as the FURS website).
+        tuple: A tuple containing three lists - typical_website_links, file_links, and other_websites. # noqa: E501
+               typical_website_links: List of website links that are considered typical (as the FURS website). # noqa: E501
                file_links: List of file links.
                other_websites: List of website links that are not typical or file links.
         """
@@ -183,8 +191,8 @@ class FURSReferencesList:
 
     def is_typical_website(self, soup):
         """
-        Checks if the given soup object represents a typical website. We define typical website, as one that has
-        the web format of FURS, .i.e. it has the sections: Opis, Podrobnejši opisi, Zakonodaja, Navodila in Pojasnila.
+        Checks if the given soup object represents a typical website. We define typical website, as one that has # noqa: E501
+        the web format of FURS, .i.e. it has the sections: Opis, Podrobnejši opisi, Zakonodaja, Navodila in Pojasnila. # noqa: E501
 
         Parameters:
         - soup: BeautifulSoup object representing the HTML content of a website.
@@ -199,19 +207,24 @@ class FURSReferencesList:
         sections = content_element.find_all("a", href="#")
         for section in sections:
             section_title = section.text.strip()
-            if section_title in ["Opis", "Podrobnejši opisi", "Zakonodaja", "Navodila in Pojasnila"]:
+            if section_title in [
+                "Opis",
+                "Podrobnejši opisi",
+                "Zakonodaja",
+                "Navodila in Pojasnila",
+            ]:
                 return True
         return False
 
     def extract_further_references_from_furs_websites(self, url_link):
         """
-        Extracts further references from FURS websites that go into more detail for each of the relevant tax areas.
+        Extracts further references from FURS websites that go into more detail for each of the relevant tax areas. # noqa: E501
 
         Args:
             url_link (str): The URL link of the website to scrape.
 
         Returns:
-            pandas.DataFrame: A DataFrame containing the extracted website details, including the reference URL,
+            pandas.DataFrame: A DataFrame containing the extracted website details, including the reference URL, # noqa: E501
             section title, section text, link text, and link URL.
         """
         soup = get_website_html(url_link, driver=self.driver, close_driver=False)
@@ -225,12 +238,17 @@ class FURSReferencesList:
         sections = content_element.find_all("a", href="#")
         for section in tqdm.tqdm(sections, leave=False, position=1):
             section_title = section.text.strip()
-            if section_title in ["Opis", "Podrobnejši opisi", "Zakonodaja", "Navodila in Pojasnila"]:
+            if section_title in [
+                "Opis",
+                "Podrobnejši opisi",
+                "Zakonodaja",
+                "Navodila in Pojasnila",
+            ]:
                 section_text = ""
                 section_siblings = section.parent.find_next_siblings()
                 for sibling in section_siblings:
                     section_text = section_text + "\n" + sibling.get_text()
-                    # Clean up text - remove special characters that are not the common one (e.g. (, ), -, etc.)
+                    # Clean up text - remove special characters that are not the common one (e.g. (, ), -, etc.) # noqa: E501
                     section_text = section_text.replace(" Bigstock", " ").strip()
                     section_links = sibling.find_all("a", href=True)
                     for link in section_links:
@@ -238,7 +256,9 @@ class FURSReferencesList:
                         link_href = link.get("href")
                         if link_href.startswith("/"):
                             link_href = self.furs_root_url + link_href
-                        website_details.append([url_link, section_title, section_text, link_text, link_href])
+                        website_details.append(
+                            [url_link, section_title, section_text, link_text, link_href]
+                        )
         df = pd.DataFrame(
             data=website_details,
             columns=[
@@ -257,5 +277,3 @@ if __name__ == "__main__":
     METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data"
     reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=True)
     reference_data.update_references()
-
- 
