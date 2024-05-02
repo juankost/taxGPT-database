@@ -35,7 +35,11 @@ class VectorStore:
     """
 
     def __init__(
-        self, parsed_data_dir, processed_data_dir, vector_db_path, embedding_model="text-embedding-3-large"
+        self,
+        parsed_data_dir,
+        processed_data_dir,
+        vector_db_path,
+        embedding_model="text-embedding-3-large",
     ) -> None:
         self.embedding_model = embedding_model
         self.embeddings = OpenAIEmbeddings(model=self.embedding_model)
@@ -58,15 +62,20 @@ class VectorStore:
 
         Returns:
             None
-
         """
         files_in_dir = os.listdir(self.parsed_data_dir)
         for file_name in tqdm.tqdm(files_in_dir):
             if file_name.endswith(".txt"):
                 src_data_path = os.path.join(self.parsed_data_dir, file_name)
                 dst_data_path = os.path.join(self.processed_data_dir, file_name)
-                src_metadata_path = os.path.join(self.parsed_data_dir, file_name.split(".")[0] + ".metadata")
-                dst_metadata_path = os.path.join(self.processed_data_dir, file_name.split(".")[0] + ".metadata")
+                if os.path.exists(dst_data_path):
+                    continue
+                src_metadata_path = os.path.join(
+                    self.parsed_data_dir, file_name.split(".")[0] + ".metadata"
+                )
+                dst_metadata_path = os.path.join(
+                    self.processed_data_dir, file_name.split(".")[0] + ".metadata"
+                )
                 self.add_file_to_vector_store(src_data_path, src_metadata_path)
                 os.rename(src_data_path, dst_data_path)
                 os.rename(src_metadata_path, dst_metadata_path)
@@ -87,8 +96,7 @@ class VectorStore:
 
         """
         with open(data_path, "r") as f:
-            chunks = json.load(f)
-            texts = [chunk["content"] for chunk in chunks]  # FAISS expects the chunks of data to be a list of strings
+            texts = json.load(f)
         with open(metadata_path, "r") as f:
             metadatas = json.load(f)
 
@@ -97,7 +105,9 @@ class VectorStore:
         text_embedding_pairs = zip(texts, embeddings)
 
         if self.db is None:
-            self.db = FAISS.from_embeddings(text_embedding_pairs, self.embeddings, metadatas=metadatas)
+            self.db = FAISS.from_embeddings(
+                text_embedding_pairs, self.embeddings, metadatas=metadatas
+            )
         else:
             self.db.add_texts(texts, metadatas=metadatas)
 
@@ -116,7 +126,9 @@ class VectorStore:
 
         for i in range(0, len(texts), batch_size):
             embeddings.extend(
-                get_embeddings_with_backoff(texts[i : i + batch_size], model=self.embedding_model)  # noqa: E203
+                get_embeddings_with_backoff(
+                    texts[i : i + batch_size], model=self.embedding_model
+                )  # noqa: E203
             )  # noqa: E203
         return embeddings
 
@@ -132,9 +144,16 @@ if __name__ == "__main__":
     PROCESSED_DATA_DIR = os.getenv("PROCESSED_DATA_DIR")
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
-    reference_data_path = os.path.join(METADATA_DIR, "references.csv")
 
-    vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH)
+    # vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH)
+    # vector_store.update_or_create_vector_store()
+
+    # Test run on the test data
+    EMBEDDING_MODEL = "text-embedding-3-small"
+    FILE_CHUNKS_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_parser/chunks"
+    PROCESSED_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_parser/database_data"
+    VECTOR_DB_PATH = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_parser/vector_db"
+    vector_store = VectorStore(FILE_CHUNKS_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH)
     vector_store.update_or_create_vector_store()
 
     # embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
