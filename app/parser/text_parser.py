@@ -3,10 +3,12 @@ import pandas as pd
 import os
 import json
 import tiktoken
+import re
 import html2text
 import subprocess
 from tqdm import tqdm
 from tabulate import tabulate
+from app.utils import suppress_logging, restore_logging
 from marker.convert import convert_single_pdf
 from marker.models import load_all_models
 
@@ -16,6 +18,7 @@ class FileProcessor:
         self.converted_data_dir = converted_data_dir
         self.metadata_dir = metadata_dir
         self.downloaded_data = pd.read_csv(os.path.join(metadata_dir, "downloaded_data_index.csv"))
+        self.model_list = None
 
     def convert_all_files(self):
         for idx, row in tqdm(self.downloaded_data.iterrows(), total=self.downloaded_data.shape[0]):
@@ -24,6 +27,7 @@ class FileProcessor:
             original_path = row["downloaded_path"]
             converted_path = row["processed_filepath"]
             file_name = os.path.splitext(os.path.basename(original_path))[0]
+            # TODO (juan) what exactlz does splitext do
             expected_save_path = os.path.join(self.converted_data_dir, file_name + ".md")
             if pd.notna(converted_path) and os.path.exists(converted_path):
                 continue  # Skip processing if the file already exists
@@ -36,18 +40,35 @@ class FileProcessor:
 
             try:
                 if file_type == "pdf":
-                    saved_path = self.convert_pdf_to_md(original_path, file_name)
+                    if self.model_list is None:
+                        self.model_list = load_all_models()
+                    saved_path = FileProcessor.convert_pdf_to_md(
+                        original_path, file_name, self.converted_data_dir, self.model_list
+                    )
                 elif file_type == "html":
-                    saved_path = self.convert_html_to_md(original_path, file_name)
+                    saved_path = FileProcessor.convert_html_to_md(
+                        original_path, file_name, self.converted_data_dir
+                    )
                 elif file_type == "docx":
-                    saved_path = self.convert_docx_to_md(original_path, file_name)
+                    saved_path = FileProcessor.convert_docx_to_md(
+                        original_path, file_name, self.converted_data_dir
+                    )
                 elif file_type == "doc":
-                    saved_path = self.convert_doc_to_md(original_path, file_name)
+                    saved_path = FileProcessor.convert_doc_to_md(
+                        original_path, file_name, self.converted_data_dir
+                    )
                 elif file_type == "xlsx":
-                    saved_path = self.convert_xlsx_to_md(original_path, file_name)
+                    saved_path = FileProcessor.convert_xlsx_to_md(
+                        original_path, file_name, self.converted_data_dir
+                    )
                 else:
                     print(f"File type not supported for parsing. File: {original_path}")
                     continue
+
+                # Post processing steps: remove image data, espace special characters, validate conversion # noqa: E501
+                FileProcessor.md_remove_image_data(saved_path)
+                saved_path = FileProcessor.md_conversion_validate(saved_path)
+
             except Exception as e:
                 print(f"File {original_path} could not be converted to md. Error: {e}")
                 saved_path = None
@@ -58,19 +79,47 @@ class FileProcessor:
                 os.path.join(self.metadata_dir, "downloaded_data_index.csv"), index=False
             )
 
-    def convert_pdf_to_md(self, path, file_name):
-        model_lst = load_all_models()
-        full_text, out_meta = convert_single_pdf(path, model_lst, parallel_factor=1)
+    @staticmethod
+    def md_remove_image_data(path):
+        # In the markdown text, there can be images like this:
+        # ![image](encoded image)
+        # We want to remove the image data, i.e. the full ![image](encoded image), and return the text only # noqa: E501
+        with open(path, "r") as f:
+            text = f.read()
+            text = re.sub(r"!\[image\]\(([^)]+)\)", "", text)
+        with open(path, "w") as f:
+            f.write(text)
 
-        save_path = os.path.join(self.converted_data_dir, file_name + ".md")
+    @staticmethod
+    def md_conversion_validate(path):
+        # If the markdown file is actually empty, then we need to remove the file
+        # and change the downlaoded_data information to None
+        with open(path, "r") as f:
+            text = f.read()
+            if len(text) == 0:
+                os.remove(path)
+                return None
+        return path
+
+    @staticmethod
+    def convert_pdf_to_md(path, file_name, converted_data_dir, models_list):
+
+        # Suppress the many logging messages when calling this function
+        previous_level = suppress_logging()
+        full_text, out_meta = convert_single_pdf(path, models_list, parallel_factor=1)
+        restore_logging(previous_level)
+
+        save_path = os.path.join(converted_data_dir, file_name + ".md")
         with open(save_path, "w+", encoding="utf-8") as f:
             f.write(full_text)
         return save_path
 
-    def convert_html_to_md(self, path, file_name):
+    @staticmethod
+    def convert_html_to_md(path, file_name, converted_data_dir):
         h = html2text.HTML2Text()
         h.ignore_links = True
-        save_path = os.path.join(self.converted_data_dir, file_name + ".md")
+        h.ignore_images = True
+        save_path = os.path.join(converted_data_dir, file_name + ".md")
 
         with open(path, "r") as fin:
             markdown_content = h.handle(fin.read())
@@ -79,20 +128,22 @@ class FileProcessor:
 
         return save_path
 
-    def convert_docx_to_md(self, path, file_name):
-        save_path = os.path.join(self.converted_data_dir, file_name + ".md")
+    @staticmethod
+    def convert_docx_to_md(path, file_name, converted_data_dir):
+        save_path = os.path.join(converted_data_dir, file_name + ".md")
         command = f"pandoc -f docx -t markdown -o {save_path} {path}"
         subprocess.run(command, shell=True)
         return save_path
 
-    def convert_doc_to_md(self, path, file_name):
+    @staticmethod
+    def convert_doc_to_md(path, file_name, converted_data_dir):
         # Convert .doc to .docx using LibreOffice
-        temp_docx_path = os.path.join(self.converted_data_dir, file_name + ".docx")
-        convert_command = f"soffice --convert-to docx {path} --outdir {self.converted_data_dir}"
+        temp_docx_path = os.path.join(converted_data_dir, file_name + ".docx")
+        convert_command = f"soffice --convert-to docx {path} --outdir {converted_data_dir}"
         subprocess.run(convert_command, shell=True)
 
         # Now convert the .docx to .md using pandoc
-        save_path = os.path.join(self.converted_data_dir, file_name + ".md")
+        save_path = os.path.join(converted_data_dir, file_name + ".md")
         pandoc_command = f"pandoc -f docx -t markdown -o {save_path} {temp_docx_path}"
         subprocess.run(pandoc_command, shell=True)
 
@@ -101,10 +152,11 @@ class FileProcessor:
 
         return save_path
 
-    def convert_xlsx_to_md(self, path, file_name):
+    @staticmethod
+    def convert_xlsx_to_md(path, file_name, converted_data_dir):
         df = pd.read_excel(path)
         markdown_content = tabulate(df, headers="keys", tablefmt="pipe", showindex=False)
-        save_path = os.path.join(self.converted_data_dir, file_name + ".md")
+        save_path = os.path.join(converted_data_dir, file_name + ".md")
 
         with open(save_path, "w") as file:
             file.write(markdown_content)
@@ -152,7 +204,6 @@ class TextProcessor:
             chunk_metadata_save_path = os.path.join(
                 self.file_chunks_data_dir, file_name + ".metadata"
             )
-
             # Check conditions
             if not pd.isna(file_chunks_path) and os.path.exists(file_chunks_path):
                 continue  # Skip, output already exists
@@ -175,10 +226,15 @@ class TextProcessor:
                     chunk_metadata.update(file_metadata)
 
                 # Save the chunks and their metadata
-                with open(chunk_text_save_path, "w") as f:
-                    f.write(json.dumps(chunks))
-                with open(chunk_metadata_save_path, "w") as f:
-                    f.write(json.dumps(chunks_metadata))
+                with open(chunk_text_save_path, "w", encoding="utf-8") as f:
+                    f.write(json.dumps(chunks, ensure_ascii=False))
+                with open(chunk_metadata_save_path, "w", encoding="utf-8") as f:
+                    f.write(json.dumps(chunks_metadata, ensure_ascii=False))
+
+                self.downloaded_data.at[idx, "file_chunks_path"] = chunk_text_save_path
+                self.downloaded_data.to_csv(
+                    os.path.join(self.metadata_dir, "downloaded_data_index.csv"), index=False
+                )
 
     def chunk_file(self, file_path):
         with open(file_path, "r") as file:
@@ -189,6 +245,9 @@ class TextProcessor:
         chunks = []
         for i in range(0, len(tokens), self.max_tokens - self.overlap_tokens):
             chunk_text = enc.decode(tokens[i : min(i + self.max_tokens, len(tokens))])  # noqa E203
+            # print(chunk_text)
+            # chunk_text = chunk_text.encode("utf-8").decode("unicode_escape")
+            # print(chunk_text)
             chunks.append(chunk_text)
 
         # Create chunk metadata (placeholder for now)
@@ -225,7 +284,35 @@ if __name__ == "__main__":
     # )
 
     # Create an instance of FileProcessor
-    file_processor = FileProcessor(CONVERTED_DATA_DIR, METADATA_DIR)
-    file_processor.convert_all_files()
-    text_processor = TextProcessor(METADATA_DIR, CONVERTED_DATA_DIR, FILE_CHUNKS_DATA_DIR)
-    text_processor.chunk_all_files()
+    # file_processor = FileProcessor(CONVERTED_DATA_DIR, METADATA_DIR)
+    # file_processor.convert_all_files()
+    # text_processor = TextProcessor(METADATA_DIR, CONVERTED_DATA_DIR, FILE_CHUNKS_DATA_DIR)
+    # text_processor.chunk_all_files()
+
+    CONVERTED_FILE_PATH = (
+        "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/converted_files"
+    )
+    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/"
+    FILE_CHUNKS_DATA_DIR = (
+        "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/chunked_fils"
+    )
+    file_processor = FileProcessor(CONVERTED_FILE_PATH, METADATA_DIR)
+
+    # Testing the removal of image data from md
+    # file_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/converted_files/Dokument_02009R1072-20220221.md"  # noqa: E501
+    # file_processor.md_remove_image_data(file_path)
+
+    # Testing if conversion validation works
+    # file_path = (
+    #     "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/converted_files/2015.md"
+    # )
+    # file_path = file_processor.md_conversion_validate(file_path)
+    # print("Updated file path: ", file_path)
+
+    # Testing the decoding of special characters
+    file_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/converted_files/Vračilo_celotnega_zneska_plačane_trošarine_-19._člen_Zakona_o_trošarinah_–_ZTro-1.md"  # noqa: E501
+    processor = TextProcessor(METADATA_DIR, CONVERTED_FILE_PATH, FILE_CHUNKS_DATA_DIR)
+    # processor.chunk_all_files()
+    # chunks, chunks_metadata = processor.chunk_file(file_path)
+    # breakpoint()
+    # chunks (contain \n) --> json.dumps (\n --> \\n)

@@ -4,20 +4,37 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import sys
 import backoff
+import signal
+import logging
+
 from selenium.common.exceptions import WebDriverException, TimeoutException
 from playwright.sync_api import sync_playwright
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
 
-FILE_EXTENSIONS = ["docx", "doc", "pdf", "zip", "xlsx", "xls", "ppt", "pptx", "csv", "txt", "rtf", "odt", "ods"]
+FILE_EXTENSIONS = [
+    "docx",
+    "doc",
+    "pdf",
+    "zip",
+    "xlsx",
+    "xls",
+    "ppt",
+    "pptx",
+    "csv",
+    "txt",
+    "rtf",
+    "odt",
+    "ods",
+]
 
 
 def get_chrome_driver(local=False):
     chrome_options = Options()
     chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")  # Bypass OS security model, REQUIRED for Docker. Use with caution.
+    chrome_options.add_argument(
+        "--no-sandbox"
+    )  # Bypass OS security model, REQUIRED for Docker. Use with caution.
     chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems.
     chrome_options.add_argument("--disable-gpu")  # Applicable to windows os only
     chrome_options.add_argument("start-maximized")  #
@@ -26,23 +43,24 @@ def get_chrome_driver(local=False):
 
     if local:
         sys.path.append(
-            "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chromedriver/mac_arm-121.0.6167.85/chromedriver-mac-arm64/chromedriver"
+            "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chromedriver/mac_arm-121.0.6167.85/chromedriver-mac-arm64/chromedriver"  # noqa: E501
         )
-        browser_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chrome/mac_arm-121.0.6167.85/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+        browser_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/chrome/mac_arm-121.0.6167.85/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"  # noqa: E501
         chrome_options.binary_location = browser_path
 
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
+
 def wait_for_app_root_or_default(driver, timeout=5, default_wait=10):
     try:
         # Wait for the <app-root> element to be present in the DOM
         app_root = WebDriverWait(driver, timeout).until(
-            EC.presence_of_element_located((By.TAG_NAME, 'app-root'))
+            EC.presence_of_element_located((By.TAG_NAME, "app-root"))
         )
         # Once the element is present, check if it has content
         WebDriverWait(driver, timeout).until(
-            lambda d: app_root.get_attribute('innerHTML').strip() != ""
+            lambda d: app_root.get_attribute("innerHTML").strip() != ""
         )
     except TimeoutException:
         # If the <app-root> element is not found or has no content within the timeout,
@@ -51,9 +69,9 @@ def wait_for_app_root_or_default(driver, timeout=5, default_wait=10):
         driver.implicitly_wait(default_wait)
 
 
-@backoff.on_exception(backoff.expo,
-                      (ConnectionError, WebDriverException, TimeoutException),
-                      max_tries=5, max_time=20)
+@backoff.on_exception(
+    backoff.expo, (ConnectionError, WebDriverException, TimeoutException), max_tries=5, max_time=20
+)
 def get_website_html(file_url, driver=None, close_driver=True, wait_app_root=False):
     if driver is None:
         driver = get_chrome_driver(local=False)
@@ -62,7 +80,9 @@ def get_website_html(file_url, driver=None, close_driver=True, wait_app_root=Fal
         if wait_app_root:
             wait_for_app_root_or_default(driver)
         else:
-            WebDriverWait(driver, 10).until(lambda d: d.execute_script("return document.readyState") == "complete")
+            WebDriverWait(driver, 10).until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
 
         html = driver.page_source
         soup = BeautifulSoup(html, "html.parser")
@@ -87,7 +107,13 @@ def is_url_to_file(url):
 
 def make_title_safe(title):
     title = (
-        str(title).strip().replace(" ", "_").replace("(", "-").replace(")", "_").replace("/", "_").replace("\xa0", "_")
+        str(title)
+        .strip()
+        .replace(" ", "_")
+        .replace("(", "-")
+        .replace(")", "_")
+        .replace("/", "_")
+        .replace("\xa0", "_")
     )
     if not title[-1].isalnum():
         title = title[:-1]
@@ -114,7 +140,6 @@ def get_filetype(path):
     elif path.endswith(".html"):
         return "html"
     else:
-        print(path)
         return "unknown"
 
 
@@ -124,25 +149,56 @@ def get_request_url_from_button_click(website_url, button_html_signature):
         page = browser.new_page()
 
         request_urls = []
+
         # Start capturing network requests
         def handle_request(request):
             print("Request made:", request.url)
             request_urls.append(request.url)
 
-        
         page.on("request", handle_request)
 
         page.goto(website_url)
-        page.wait_for_selector(button_html_signature, state='attached')
+        page.wait_for_selector(button_html_signature, state="attached")
         page.click(button_html_signature)  # Selector for the PDF download button
         page.wait_for_timeout(10000)  # Wait for 5 seconds to capture the request
         browser.close()
-        # print(request_urls)
 
     for url in request_urls:
         # The format of request seems to be: https://pisrs.si/api/datoteke/integracije/36058941
         if "api/datoteke/" in url:
-            return url            
-            print(url)
-    
-    
+            return url
+
+
+def handler(signum, frame):
+    print("Segmentation fault caught, retrying...")
+    raise RuntimeError("Segmentation fault")
+
+
+def recover_from_segmentation_fault(fn, max_attempts=5):
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            # Set the signal handler for segmentation faults
+            signal.signal(signal.SIGSEGV, handler)
+            fn()
+            break  # If the operation is successful, exit the loop
+        except RuntimeError:
+            attempts += 1
+            if attempts == max_attempts:
+                print("Failed after maximum retries")
+                raise
+            continue
+
+
+# Function to suppress logging
+def suppress_logging():
+    logger = logging.getLogger()
+    current_level = logger.getEffectiveLevel()
+    logger.setLevel(logging.WARNING)
+    return current_level
+
+
+# Function to restore logging
+def restore_logging(previous_level):
+    logger = logging.getLogger()
+    logger.setLevel(previous_level)

@@ -9,7 +9,13 @@
 taxgpt_database.egg-info
 __pycache__
 ```
+*.ipynb_checkpoints
 data
+data_test1
+data_test2
+data_test3
+data_test4
+old_data
 app/notebooks/CELEX_32008L0118_SL_TXT.pdf
 app/notebooks/CELEX_32008R1005_SL_TXT.pdf
 app/notebooks/CELEX_32009D0477_SL_TXT.pdf
@@ -21,3 +27,4 @@ app/notebooks/CELEX_52013XC0411(01)_SL_TXT.pdf
 app/notebooks/cellar_a5bb0db0-ab46-43f7-a73f-cc75781a232b.0018.01_DOC_1.pdf
 app/notebooks/CONSLEG_2006L0112_20100115_sl_TXT.pdf
 cellar_a5bb0db0-ab46-43f7-a73f-cc75781a232b.0018.01_DOC_1.pdf
+taxGPT-database.code-workspace

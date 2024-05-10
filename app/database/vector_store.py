@@ -58,13 +58,13 @@ class VectorStore:
             None
         """
         for idx, row in tqdm(self.downloaded_data.iterrows(), total=self.downloaded_data.shape[0]):
-            if row["in_vector_db"]:
+            if not pd.isna(row["in_vector_db"]) and str(row["in_vector_db"]) == "True":
                 continue
             elif pd.isna(row["file_chunks_path"]):
                 continue
             else:
                 file_path = row["file_chunks_path"]
-                file_metadata_path = file_path.rsplit(".")[0] + ".metadata"
+                file_metadata_path = file_path.rsplit(".", 1)[0] + ".metadata"
 
                 # Add to the vector DB and update the downloaded_data to show it' sin the DB
                 try:
@@ -74,7 +74,7 @@ class VectorStore:
                 except Exception as e:
                     print(f"Error processing file {file_path}. Error: {e}")
 
-                if idx % 100 == 0:
+                if idx % 100 == 0 and self.db is not None:
                     self.db.save_local(self.vector_db_path)
         # Save the vector store locally
         self.db.save_local(self.vector_db_path)  # Save on every iteration in case of crash

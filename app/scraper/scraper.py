@@ -5,6 +5,7 @@ import tqdm
 import requests
 import backoff
 import datetime
+import zipfile
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 from urllib.parse import urljoin
@@ -64,7 +65,6 @@ def _download_file(url_link, save_path):
         for chunk in response.iter_content(chunk_size=1024):
             if chunk:
                 f.write(chunk)
-    print("Downloaded file")
 
 
 class Scraper:
@@ -74,10 +74,12 @@ class Scraper:
         self.metadata_dir = os.path.dirname(references_data_path)
         self.references_data = pd.read_csv(references_data_path)
         self.output_dir = output_dir
+        self.temp_dir = os.path.join(self.output_dir, "temp")
         self.already_downloaded_clean_links = []
 
         # Make sure the output dir exists
         os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(self.temp_dir, exist_ok=True)
 
         # If references_data is new it might not have all the columns
         cols_to_add = [
@@ -122,6 +124,16 @@ class Scraper:
             # The order is important.
             # First try to download the details href, and if that is nan, then download the
             # reference href
+            # TODO (juan): Need to be able to handle .zip files. Problem is that they are too many
+            # too much manual work
+            # if get_filetype(details_href_clean) == "zip":
+            #     continue
+            #     self.download_zip_file(
+            #         details_href_clean,
+            #         row["details_href_name"],
+            #         idx,
+            #         idx_to_download_info,
+            #     )
             if is_url_to_file(details_href_clean):
                 self.download_file(
                     details_href_clean,
@@ -150,8 +162,10 @@ class Scraper:
                     idx,
                     idx_to_download_info,
                 )
+
         # Create a clean dataset for all the downloaded data
         self.update_downloaded_data_index()
+
         return self.references_data
 
     def download_file(self, url_link, title, idx, idx_to_download_info):
@@ -192,9 +206,68 @@ class Scraper:
                 _download_file(url_link, saved_path)
             except Exception as e:
                 print(f"Could not download the file {url_link}. Error: ", e)
+
         idx_to_download_info[idx] = (url_link, url_link, saved_path)
         self.update_references_data(idx, url_link, url_link, saved_path)
         self.already_downloaded_clean_links.append(url_link)
+        return
+
+    def download_zip_file(self, url_link, title, idx, idx_to_download_info):
+
+        # Download the zip file
+        zip_filename = os.path.basename(url_link)
+        zip_filepath = os.path.join(self.output_dir, zip_filename)
+        try:
+            _download_file(url_link, zip_filepath)
+        except Exception as e:
+            print("Could not download the file", url_link, " Error: ", e)
+            return
+
+        self.update_references_data(idx, url_link, url_link, zip_filepath)
+        self.already_downloaded_clean_links.append(url_link)
+
+        try:
+            # Extract the zip file
+            with zipfile.ZipFile(zip_filepath, "r") as zip_ref:
+                zip_ref.extractall(self.temp_dir)
+        except Exception as e:
+            print("Could not extract the zip data for url: ", url_link, "Error: ", e)
+            return
+
+        for extracted_file in zip_ref.namelist():
+            original_path = os.path.join(self.temp_dir, extracted_file)
+            if not os.path.isfile(original_path):
+                # TODO (juan) we will not handle the cases where the extracted file is a directory
+                continue
+            if get_filetype(original_path) == "unknown":
+                continue
+            new_filename = f"{zip_filename.rsplit('.')[0]}_{extracted_file}"
+            new_filename = make_title_safe(new_filename)
+            new_filepath = os.path.join(self.output_dir, new_filename)
+            os.rename(original_path, new_filepath)
+
+            # Create a new row for the DataFrame
+            orig_row = self.references_data.iloc[idx]
+            new_row = orig_row.copy()
+            new_row["details_href_name"] = new_filename
+            new_row["actual_download_location"] = new_filepath
+            new_index = self.references_data.index.max() + 1
+            new_row_df = pd.DataFrame(
+                [new_row], index=[new_index], columns=self.references_data.columns
+            )
+            self.references_data = pd.concat(
+                [self.references_data, new_row_df],
+                ignore_index=False,
+            )
+            self.references_data.to_csv(self.references_data_path, index=False)
+
+        # Delete the original row using the original index
+        self.references_data = self.references_data.drop(idx)
+        self.references_data.to_csv(self.references_data_path, index=False)
+
+        os.remove(zip_filepath)
+        # except Exception as e:
+        #     print("Could not extract the zip data for url: ", url_link, "Error: ", e)
         return
 
     def download_website(self, url_link, title, idx, idx_to_download_info):
@@ -239,7 +312,7 @@ class Scraper:
             self.references_data.at[idx, "used_download_href"] = url_link
             self.references_data.at[idx, "actual_download_link"] = actual_download_link
             self.references_data.at[idx, "actual_download_location"] = actual_download_location
-            self.references_data.at[idx, "data_downloaded"] = datetime.datetime.now().date()
+            self.references_data.at[idx, "date_downloaded"] = datetime.datetime.now().date()
         self.references_data.at[idx, "is_scraped"] = True
         self.references_data.to_csv(self.references_data_path, index=False)
 
@@ -285,13 +358,13 @@ class Scraper:
     def update_downloaded_data_index(self):
         # If the file does not exist, create it
         if not os.path.exists(os.path.join(self.metadata_dir, "downloaded_data_index.csv")):
-            downloaded_data_index = self.create_downloaded_data_index()
+            downloaded_data_index = self.create_downloaded_data_index(self.references_data)
         else:
             downloaded_data_index = pd.read_csv(
                 os.path.join(self.metadata_dir, "downloaded_data_index.csv")
             )
             new_data = self.references_data[
-                ~self.references_data["file_id"].isin(self.downloaded_data_index["file_id"])
+                ~self.references_data["file_id"].isin(downloaded_data_index["file_id"])
             ]
             new_downloaded_data_index = self.create_downloaded_data_index(new_data)
             downloaded_data_index = pd.concat([downloaded_data_index, new_downloaded_data_index])
@@ -895,8 +968,11 @@ if __name__ == "__main__":
     # RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/testing/"
     # print(ScrapeEURLex.download_custom_website(file_url, None, RAW_DATA_DIR, driver))
 
-    # for idx in range(10):
-    #     print(idx)
-    #     print(ScrapeEURLex.download_custom_website(file_url, None, RAW_DATA_DIR, driver))
-
-    # Test if it now download it correctlz
+    # Test if it download the zip file correctly
+    # file_url = "https://fu.gov.si/fileadmin/Internet/Carina/Prepovedi_in_omejitve/Ribiski_proizvodi/Opis/Pogosta_vprasanja_glede_izvajanja_IUU_uredbe.zip"  # noqa E501
+    # driver = get_chrome_driver(local=True)
+    # RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/raw_files"
+    # METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/"
+    # scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=True)
+    # scraper.download_all_references()
+    # scraper.download_zip_file(file_url, None, RAW_DATA_DIR, driver)

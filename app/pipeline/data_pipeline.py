@@ -16,7 +16,6 @@ from app.storage.storage_bucket import (
 from app.database.vector_store import VectorStore
 from app.parser.text_parser import FileProcessor, TextProcessor
 
-
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -58,7 +57,7 @@ def load_database(local=False):
         download_folder(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
 
-def update_database(local=False):
+def update_database(local=False, force_update=False):
     # Read the relevant env variables
     ROOT_URL = os.getenv("ROOT_URL")
     METADATA_DIR = os.getenv("METADATA_DIR")
@@ -69,18 +68,24 @@ def update_database(local=False):
     STORAGE_BUCKET_NAME = os.getenv("STORAGE_BUCKET_NAME")
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
     reference_data_path = os.path.join(METADATA_DIR, "references.csv")
+    downloaded_data_index_path = os.path.join(METADATA_DIR, "downloaded_data_index.csv")
 
     logging.info("Updating the database")
 
     # 1. Load the backup if it exists - we only load the DB if the vector database exists
-    if STORAGE_BUCKET_NAME is not None and check_folder_exists(
-        STORAGE_BUCKET_NAME, "vector_database", local=local
+    if (
+        not force_update
+        and STORAGE_BUCKET_NAME is not None
+        and check_folder_exists(STORAGE_BUCKET_NAME, "vector_database", local=local)
     ):
         os.makedirs(METADATA_DIR, exist_ok=True)
         os.makedirs(VECTOR_DB_PATH, exist_ok=True)
         download_blob(STORAGE_BUCKET_NAME, "references.csv", reference_data_path, local=local)
         download_blob(
-            STORAGE_BUCKET_NAME, "downloaded_data_index.csv", reference_data_path, local=local
+            STORAGE_BUCKET_NAME,
+            "downloaded_data_index.csv",
+            downloaded_data_index_path,
+            local=local,
         )
         download_folder(STORAGE_BUCKET_NAME, "vector_database", VECTOR_DB_PATH, local=local)
 
@@ -95,9 +100,11 @@ def update_database(local=False):
     scraper.download_all_references()
 
     # 4. Parse the raw data
-    logging.info("Parsing the raw data")
+    logging.info("Converting the raw data")
     file_processor = FileProcessor(CONVERTED_DATA_DIR, METADATA_DIR)
     file_processor.convert_all_files()
+
+    logging.info("Chunking the converted data")
     text_processor = TextProcessor(METADATA_DIR, CONVERTED_DATA_DIR, FILE_CHUNKS_DATA_DIR)
     text_processor.chunk_all_files()
 
@@ -131,6 +138,7 @@ def main():
     # Pass a command line argument that decides if we simply load or update the database
     parser = argparse.ArgumentParser(description="Update or load the database")
     parser.add_argument("--update", action="store_true", help="Update the database")
+    parser.add_argument("--force", action="store_true", help="Ignores any previous uploaded data")
     parser.add_argument(
         "--local", action="store_true", help="For running on local machine. Debugging purposes."
     )
@@ -145,7 +153,7 @@ def main():
 
     if args.update:
         logging.info("Updating the database")
-        update_database(local=args.local)
+        update_database(local=args.local, force_update=args.force)
     else:
         logging.info("Loading the database")
         load_database(local=args.local)
