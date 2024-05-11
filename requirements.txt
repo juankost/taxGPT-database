@@ -18,3 +18,9 @@ tqdm
 backoff
 pymupdf
 playwright
+html2text
+marker-pdf
+tabulate
+
+
+
