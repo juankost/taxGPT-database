@@ -10,14 +10,12 @@ def get_context(query, db, k=10, max_context_len=4096, embedding_model="text-emb
     law_articles_sources = [doc.metadata for doc in docs]
 
     logging.info(f"Retrieved {len(law_articles_text)} law articles")
-    # logging.info(law_articles_sources[0])
-    # logging.info(law_articles_text[0])
 
     context = "Here is some relevant context extracted from the law: \n\n"
     for article, source in zip(law_articles_text, law_articles_sources):
         article_context = f"""
-        Source: {source["details_href_name"]}\n
-        Link: {source["used_download_href"]}\n
+        Source: {source["filename"]}\n
+        Link: {source["raw_filepath"]}\n
         Text: {article} \n
         """  # noqa: E501
         tokens = enc.encode(context + article_context)
@@ -36,7 +34,9 @@ if __name__ == "__main__":
 
     _ = load_dotenv(find_dotenv())  # read local .env file
 
-    db = FAISS.load_local(os.path.join(ROOT_DIR, "data/vector_store/faiss_index_all_laws"), OpenAIEmbeddings())
+    db = FAISS.load_local(
+        os.path.join(ROOT_DIR, "data/vector_store/faiss_index_all_laws"), OpenAIEmbeddings()
+    )
     context = get_context(query, db)
     print(context)
 
@@ -45,8 +45,8 @@ if __name__ == "__main__":
 
     print(
         timeit.timeit(
-            "FAISS.load_local(os.path.join(ROOT_DIR, 'data/vector_store/faiss_index_all_laws'), OpenAIEmbeddings())",
-            setup="from langchain_community.vectorstores import FAISS; from langchain_openai import OpenAIEmbeddings",
+            "FAISS.load_local(os.path.join(ROOT_DIR, 'data/vector_store/faiss_index_all_laws'), OpenAIEmbeddings())",  # noqa: E501
+            setup="from langchain_community.vectorstores import FAISS; from langchain_openai import OpenAIEmbeddings",  # noqa: E501
             number=1,
             globals=globals(),
         )
