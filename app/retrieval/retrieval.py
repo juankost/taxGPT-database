@@ -14,7 +14,7 @@ def get_context(query, db, k=10, max_context_len=4096, embedding_model="text-emb
     context = "Here is some relevant context extracted from the law: \n\n"
     for article, source in zip(law_articles_text, law_articles_sources):
         article_context = f"""
-        Source: {source["filename"]}\n
+        Source: {source["details_href_name"]}\n
         Link: {source["raw_filepath"]}\n
         Text: {article} \n
         """  # noqa: E501
