@@ -945,34 +945,7 @@ if __name__ == "__main__":
     from app.scraper.references_list import FURSReferencesList
 
     ROOT_URL = "https://www.fu.gov.si"
-    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data"
     reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=True)
     reference_data.update_references()
-
-    RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/raw_data"
     scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=True)
     scraper.download_all_references()
-
-    # Test why the scraper did not manage to download the following file, while I managed to download # noqa E501
-    # it before
-    # file_url = "https://eur-lex.europa.eu/legal-content/SL/TXT/?uri=CELEX:32022R1467&qid=1672324949047&from=en" # noqa E501
-    # driver = get_chrome_driver(local=True)
-    # RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_0419/raw_data" # noqa E501
-    # ScrapeEURLex.download_custom_website(file_url, None, RAW_DATA_DIR, driver)
-
-    # file_url = "https://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=OJ:C:2013:105:0001:0006:SL:PDF" # noqa E501
-    # file_url = "https://eur-lex.europa.eu/legal-content/SL/TXT/?uri=CELEX%3A02011R0282-20150101"
-    # file_url = "http://eur-lex.europa.eu/search.html?DTN=0952&DTA=2013&qid=1468324554259&DB_TYPE_OF_ACT=regulation&CASE_LA _SUMMARY=false&DTS_DOM=ALL&excConsLeg=true&typeOfActStatus=REGULATION&type=advanced&SUBDOM_INIT=ALL_ALL&DTS_SUBDOM=ALL_ALL" # noqa E501
-    # file_url = "https://eur-lex.europa.eu/legal-content/SL/TXT/?uri=CELEX:02014R0651-20230701"
-    # driver = get_chrome_driver(local=True)
-    # RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/testing/"
-    # print(ScrapeEURLex.download_custom_website(file_url, None, RAW_DATA_DIR, driver))
-
-    # Test if it download the zip file correctly
-    # file_url = "https://fu.gov.si/fileadmin/Internet/Carina/Prepovedi_in_omejitve/Ribiski_proizvodi/Opis/Pogosta_vprasanja_glede_izvajanja_IUU_uredbe.zip"  # noqa E501
-    # driver = get_chrome_driver(local=True)
-    # RAW_DATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/raw_files"
-    # METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/"
-    # scraper = Scraper(os.path.join(METADATA_DIR, "references.csv"), RAW_DATA_DIR, local=True)
-    # scraper.download_all_references()
-    # scraper.download_zip_file(file_url, None, RAW_DATA_DIR, driver)

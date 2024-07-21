@@ -3,6 +3,7 @@ import pandas as pd
 import logging
 import uuid
 import tqdm
+from dotenv import load_dotenv
 from app.utils import get_website_html, is_url_to_file, get_chrome_driver
 
 
@@ -273,7 +274,9 @@ class FURSReferencesList:
 
 
 if __name__ == "__main__":
+    _ = load_dotenv(".env.local")  # read local .env file
+
+    METADATA_DIR = os.getenv("METADATA_DIR")
     ROOT_URL = "https://www.fu.gov.si"
-    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data"
     reference_data = FURSReferencesList(ROOT_URL, METADATA_DIR, local=True)
     reference_data.update_references()
