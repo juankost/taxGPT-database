@@ -169,6 +169,7 @@ docker run -p 80:80 gcr.io/${PROJECT_ID}/taxgpt-database-image:latest
 ```
 
 Note, we provide the cloudbuild.yaml cloud-init.yaml, and container.yaml scripts to automated the deployment of the system to a Google VM.
+However, you might need to adapt the scripts by specifying the appropriate variables (e.g. PROJECT ID, ...)
 
 ## Future Work
 
