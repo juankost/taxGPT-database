@@ -95,10 +95,13 @@ pandoc --version
 ### Step 6: Configure Environment Variables
 
 Create a `.env` file in the project root directory and add the following variables:
+
+```
 OPENAI_API_KEY=your_openai_api_key
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/google-credentials.json
 GOOGLE_CLOUD_PROJECT=your_google_cloud_project_id
 GOOGLE_CLOUD_STORAGE_BUCKET=your_google_cloud_storage_bucket_name
+```
 
 Replace the placeholders with your actual credentials and project details.
 
