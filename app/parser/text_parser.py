@@ -27,7 +27,7 @@ class FileProcessor:
             original_path = row["downloaded_path"]
             converted_path = row["processed_filepath"]
             file_name = os.path.splitext(os.path.basename(original_path))[0]
-            # TODO (juan) what exactlz does splitext do
+            # TODO (juan) what exactly does splitext do
             expected_save_path = os.path.join(self.converted_data_dir, file_name + ".md")
             if pd.notna(converted_path) and os.path.exists(converted_path):
                 continue  # Skip processing if the file already exists
@@ -179,7 +179,6 @@ class TextProcessor:
         self.metadata_dir = metadata_dir
         self.file_chunks_data_dir = file_chunks_data_dir
         self.downloaded_data = pd.read_csv(os.path.join(metadata_dir, "downloaded_data_index.csv"))
-        # self.reference_data = pd.read_csv(os.path.join(metadata_dir, "references_data.csv"))
         self.embedding_model = embedding_model
         self.max_tokens = max_tokens
         self.overlap_tokens = overlap_tokens
@@ -245,9 +244,6 @@ class TextProcessor:
         chunks = []
         for i in range(0, len(tokens), self.max_tokens - self.overlap_tokens):
             chunk_text = enc.decode(tokens[i : min(i + self.max_tokens, len(tokens))])  # noqa E203
-            # print(chunk_text)
-            # chunk_text = chunk_text.encode("utf-8").decode("unicode_escape")
-            # print(chunk_text)
             chunks.append(chunk_text)
 
         # Create chunk metadata (placeholder for now)
@@ -270,49 +266,11 @@ if __name__ == "__main__":
     # For development purposes
     _ = load_dotenv(".env.local")  # read local .env file
 
-    # Set up directories
     METADATA_DIR = os.getenv("METADATA_DIR")
     CONVERTED_DATA_DIR = os.getenv("CONVERTED_DATA_DIR")
     FILE_CHUNKS_DATA_DIR = os.getenv("FILE_CHUNKS_DATA_DIR")
 
-    # METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/"
-    # CONVERTED_DATA_DIR = (
-    #     "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_parser"
-    # )
-    # FILE_CHUNKS_DATA_DIR = (
-    #     "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/test_parser/chunks"
-    # )
-
-    # Create an instance of FileProcessor
-    # file_processor = FileProcessor(CONVERTED_DATA_DIR, METADATA_DIR)
-    # file_processor.convert_all_files()
-    # text_processor = TextProcessor(METADATA_DIR, CONVERTED_DATA_DIR, FILE_CHUNKS_DATA_DIR)
-    # text_processor.chunk_all_files()
-
-    CONVERTED_FILE_PATH = (
-        "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/converted_files"
-    )
-    METADATA_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/"
-    FILE_CHUNKS_DATA_DIR = (
-        "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/chunked_fils"
-    )
-    file_processor = FileProcessor(CONVERTED_FILE_PATH, METADATA_DIR)
-
-    # Testing the removal of image data from md
-    # file_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/converted_files/Dokument_02009R1072-20220221.md"  # noqa: E501
-    # file_processor.md_remove_image_data(file_path)
-
-    # Testing if conversion validation works
-    # file_path = (
-    #     "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/converted_files/2015.md"
-    # )
-    # file_path = file_processor.md_conversion_validate(file_path)
-    # print("Updated file path: ", file_path)
-
-    # Testing the decoding of special characters
-    file_path = "/Users/juankostelec/Google_drive/Projects/taxGPT-database/data/converted_files/Vračilo_celotnega_zneska_plačane_trošarine_-19._člen_Zakona_o_trošarinah_–_ZTro-1.md"  # noqa: E501
-    processor = TextProcessor(METADATA_DIR, CONVERTED_FILE_PATH, FILE_CHUNKS_DATA_DIR)
-    # processor.chunk_all_files()
-    # chunks, chunks_metadata = processor.chunk_file(file_path)
-    # breakpoint()
-    # chunks (contain \n) --> json.dumps (\n --> \\n)
+    file_processor = FileProcessor(CONVERTED_DATA_DIR, METADATA_DIR)
+    file_processor.convert_all_files()
+    text_processor = TextProcessor(METADATA_DIR, CONVERTED_DATA_DIR, FILE_CHUNKS_DATA_DIR)
+    text_processor.chunk_all_files()

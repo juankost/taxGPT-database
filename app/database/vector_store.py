@@ -128,31 +128,3 @@ class VectorStore:
                 )
             )  # noqa: E203
         return embeddings
-
-
-if __name__ == "__main__":
-    # For development purposes
-    _ = load_dotenv(".env.local")  # read local .env file
-
-    # Download all the data
-    METADATA_DIR = os.getenv("METADATA_DIR")
-    FILE_CHUNKS_DATA_DIR = os.getenv("PARSED_DATA_DIR")
-    VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH")
-    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
-
-    # vector_store = VectorStore(PARSED_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_PATH)
-    # vector_store.update_or_create_vector_store()
-
-    # Test run on the test data
-    EMBEDDING_MODEL = "text-embedding-3-small"
-    ROOT_DIR = "/Users/juankostelec/Google_drive/Projects/taxGPT-database"
-    METADATA_DIR = os.path.join(ROOT_DIR, "data")
-    FILE_CHUNKS_DATA_DIR = os.path.join(ROOT_DIR, "data/test_parser/chunks")
-    VECTOR_DB_PATH = os.path.join(ROOT_DIR, "data/test_parser/vector_db")
-    vector_store = VectorStore(METADATA_DIR, FILE_CHUNKS_DATA_DIR, VECTOR_DB_PATH)
-    vector_store.update_or_create_vector_store()
-
-    # embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
-    # query = "The quick brown fox jumps over the lazy dog."
-    # embedding = embeddings.embed_query(query)
-    # print(query)
