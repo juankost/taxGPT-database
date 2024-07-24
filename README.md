@@ -45,7 +45,7 @@ Ensure you have the following installed on your system:
 ### Step 1: Clone the Repository
 
 ```
-git clone https://github.com/your-username/taxGPT-database.git
+git clone https://github.com/juankost/taxGPT-database.git
 cd taxGPT-database
 ```
 
